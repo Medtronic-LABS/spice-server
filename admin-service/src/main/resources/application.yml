@@ -1,0 +1,78 @@
+server:
+  servlet:
+    contextPath: /
+  port: 8086
+
+#DB Config
+spring:
+  application:
+    name: admin-service
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        enable_lazy_load_no_trans: true
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://servicediscovery:8761/eureka/
+
+
+springdoc:
+  packagesToScan: com.mdtlabs.coreplatform.spiceadminservice
+
+app:
+  url: http://localhost
+  swagger-server-url: http://localhost:8086/
+  sendgrid-apikey: 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
+  mail-from: notifications@test.com
+  mail-host: ${MAIL_HOST:smtp.sendgrid.net}
+  mail-port: ${MAIL_PORT:587}
+  mail-user: ${MAIL_USER:apikey}
+  mail-password: ${MAIL_PASSWORD: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}
+  file-path: /home/ideas2it/Desktop
+  mail-send: ${MAIL_SEND:true}
+  page-count: ${PAGE_COUNT:10}
+  time-limit-in-hour: ${TIME_LIMIT_IN_HOUR:1}
+  login-count-limit: ${LOGIN_COUNT_LIMIT:5}
+  reset-password-count-limit: ${RESET_PASSWORD_COUNT_LIMIT:5}
+  forget-password-count-limit: ${FORGET_PASSWORD_COUNT_LIMIT:5}
+  public-key: public_key.der
+  private-key: private_key.der
+  isCloud: ${IS_CLOUD:false}
+  mapApiKey: ${HERE_MAP_API_KEY:""}
+  apiKeyPath: ${API_KEY_PATH}
+  connectionTimeOut: 30000
+  readTimeOut: 30000
+
+cloud:
+  aws:
+    region:
+      static: ${SERVER_REGION}
+
+spicelog:
+  fileName: './log/SpiceApplicationLog.log'
+  fileNamePattern: './log/SpiceApplicationLog.%d{yyyy-MM-dd}.log.gz'
+  consolePattern: '%white(%d{ISO8601}) %highlight(%-5level) [%yellow(%t)] :  %msg%n%throwable'
+  filePattern: ' %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+  maxHistory: 30
+  totalSizeCap: 3GB

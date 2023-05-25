@@ -1,0 +1,96 @@
+server:
+  servlet:
+    #contextPath: /spice-service
+    contextPath: /
+  port: 8087
+
+#DB Config
+spring:
+  application:
+    name: spice-service
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+  jpa:
+    properties:
+      hibernate:
+        order_by:
+          default_null_ordering: last
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://servicediscovery:8761/eureka/
+
+springdoc:
+  packagesToScan: com.mdtlabs.coreplatform.spiceservice
+
+app:
+  url: http://localhost
+  swagger-server-url: http://localhost:8087/
+  sendgrid-apikey: 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
+  mail-from: notifications@test.com
+  mail-host: ${MAIL_HOST:smtp.sendgrid.net}
+  mail-port: ${MAIL_PORT:587}
+  mail-user: ${MAIL_USER:apikey}
+  mail-password: ${MAIL_PASSWORD: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}
+  file-path: ${LOCAL_FILE_SYSTEM_PATH:/home/ideas2it/Desktop}
+  mail-send: ${MAIL_SEND:true}
+  page-count: ${PAGE_COUNT:10}
+  time-limit-in-hour: ${TIME_LIMIT_IN_HOUR:1}
+  login-count-limit: ${LOGIN_COUNT_LIMIT:5}
+  reset-password-count-limit: ${RESET_PASSWORD_COUNT_LIMIT:5}
+  forget-password-count-limit: ${FORGET_PASSWORD_COUNT_LIMIT:5}
+  public-key: public_key.der
+  private-key: private_key.der
+  send-enrollment-notification: ${SEND_ENROLLMENT_NOTIFICATON:true}
+  is-next-medical-review-job: ${IS_NEXT_MEDICAL_REVIEW_JOB}
+  is-next-bp-job: ${IS_NEXT_BP_JOB}
+  is-next-bg-job: ${IS_NEXT_BG_JOB}
+  app-version: ${APP_VERSION}
+  shedlock:
+    outbound:
+      start: ${SHEDLOCK_OUTBOUND_START}
+      stop: ${SHEDLOCK_OUTBOUND_STOP}
+  is-prescription-signature-uploaded-to-s3: ${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_S3}
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${ACCESS-KEY:56356EWRTERWTE}
+      secret-key: ${SECRET-KEY:YETYETRY6456}
+    region:
+      static: ${SERVER_REGION}
+    stack:
+      auto: false
+
+application:
+  bucket:
+    name: ${BUCKET_NAME}
+
+scheduler:
+  cron:
+    sms: '0 0 1 * * ?'
+
+spicelog:
+  fileName: './log/SpiceApplicationLog.log'
+  fileNamePattern: './log/SpiceApplicationLog.%d{yyyy-MM-dd}.log.gz'
+  consolePattern: '%white(%d{ISO8601}) %highlight(%-5level) [%yellow(%t)] :  %msg%n%throwable'
+  filePattern: ' %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+  maxHistory: 30
+  totalSizeCap: 3GB
