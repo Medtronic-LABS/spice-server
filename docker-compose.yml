@@ -1,0 +1,222 @@
+version: '3'
+services:
+  redisservice:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - cache:/data
+    restart: always
+    networks:
+      - spice-app-db-network
+
+  authservice:
+    image: auth-service
+    build:
+      context: ${PROJECT_PATH}/auth-service
+      dockerfile: ${PROJECT_PATH}/auth-service/Dockerfile
+    ports:
+      - "8089:8089"
+    restart: always
+    links:
+      - redisservice
+    depends_on:
+      - redisservice
+      - mypostgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    volumes:
+      - ${PROJECT_PATH}/log:/log
+    networks:
+      - spice-app-db-network
+
+  userservice:
+    image: user-service
+    build:
+      context: ${PROJECT_PATH}/user-service
+      dockerfile: ${PROJECT_PATH}/user-service/Dockerfile
+    ports:
+      - "8085:8085"
+    restart: always
+    links:
+      - redisservice
+    depends_on:
+      - mypostgres
+      - redisservice
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - EMAIL_APP_URL=${EMAIL_APP_URL}
+      - CFR_EMAIL_APP_URL=${CFR_EMAIL_APP_URL}
+    volumes:
+      - ${PROJECT_PATH}/log:/log
+    networks:
+      - spice-app-db-network
+
+  notificationservice:
+    image: notification-service
+    build:
+      context: ${PROJECT_PATH}/notification-service
+      dockerfile: ${PROJECT_PATH}/notification-service/Dockerfile
+    ports:
+      - "8084:8084"
+    restart: always
+    links:
+      - redisservice
+    volumes:
+      - ${PROJECT_PATH}/log:/log
+    depends_on:
+      - redisservice
+      - mypostgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_FROM=${MAIL_FROM}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_SEND=${MAIL_SEND}
+      - ENABLE_SMS_NOTIFICATION=${ENABLE_SMS_NOTIFICATION}
+      - ENABLE_SMS_NOTIFICATION_SNS=${ENABLE_SMS_NOTIFICATION_SNS}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_PHONENO=${TWILIO_FROM_PHONENO}
+      - SERVER_REGION=${SERVER_REGION}
+      - ENABLE_SMS_NOTIFICATION_TWILIO=${ENABLE_SMS_NOTIFICATION_TWILIO}
+      - SHEDLOCK_EMAIL_START=${SHEDLOCK_EMAIL_START}
+      - SHEDLOCK_EMAIL_STOP=${SHEDLOCK_EMAIL_STOP}
+      - SHEDLOCK_SMS_START=${SHEDLOCK_SMS_START}
+      - SHEDLOCK_SMS_STOP=${SHEDLOCK_SMS_STOP}
+    networks:
+      - spice-app-db-network
+
+  adminservice:
+    image: admin-service
+    build:
+      context: ${PROJECT_PATH}/admin-service
+      dockerfile: ${PROJECT_PATH}/admin-service/Dockerfile
+    ports:
+      - "8086:8086"
+    links:
+      - redisservice
+    restart: always
+    volumes:
+      - ${PROJECT_PATH}/log:/log
+    depends_on:
+      - redisservice
+      - mypostgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      # - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - HERE_MAP_API_KEY=${HERE_MAP_API_KEY}
+      - IS_CLOUD=${IS_CLOUD}
+      - API_KEY_PATH=${API_KEY_PATH}
+      - SERVER_REGION=${SERVER_REGION}
+    networks:
+      - spice-app-db-network
+
+  spiceservice:
+    image: spice-service
+    build:
+      context: ${PROJECT_PATH}/spice-service
+      dockerfile: ${PROJECT_PATH}/spice-service/Dockerfile
+    ports:
+      - "8087:8087"
+    restart: always
+    links:
+      - redisservice
+    volumes:
+      - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/Prescription_Signatures:/Prescription_Signatures
+    depends_on:
+      - redisservice
+      - mypostgres
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - SERVER_REGION=${SERVER_REGION}
+      - BUCKET_NAME=${BUCKET_NAME}
+      - IS_NEXT_MEDICAL_REVIEW_JOB=${IS_NEXT_MEDICAL_REVIEW_JOB}
+      - IS_NEXT_BP_JOB=${IS_NEXT_BP_JOB}
+      - IS_NEXT_BG_JOB=${IS_NEXT_BG_JOB}
+      - SHEDLOCK_OUTBOUND_START=${SHEDLOCK_OUTBOUND_START}
+      - SHEDLOCK_OUTBOUND_STOP=${SHEDLOCK_OUTBOUND_STOP}
+      - LOCAL_FILE_SYSTEM_PATH=${LOCAL_FILE_SYSTEM_PATH}
+      - IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_S3=${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_S3}
+      - APP_VERSION=${APP_VERSION}
+    networks:
+      - spice-app-db-network
+
+  servicediscovery:
+    image: eureka-server
+    build:
+      context: ${PROJECT_PATH}/servicediscovery
+      dockerfile: ${PROJECT_PATH}/servicediscovery/Dockerfile
+    ports:
+      - "8761:8761"
+    links:
+      - redisservice
+    restart: always
+    networks:
+      - spice-app-db-network
+
+  mypostgres:
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    links:
+      - redisservice
+    depends_on:
+      - redisservice
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_DB=${DATABASE_NAME}
+    networks:
+      - spice-app-db-network
+
+  gatewayservice:
+    image: gateway-service
+    build:
+      context: ${PROJECT_PATH}/gateway-service
+      dockerfile: ${PROJECT_PATH}/gateway-service/Dockerfile
+    ports:
+      - "8762:8762"
+    restart: always
+    environment:
+      - SWAGGER_ENABLED=${SWAGGER_ENABLED}
+    networks:
+      - spice-app-db-network
+
+networks:
+  spice-app-db-network:
+    driver: bridge
+
+volumes:
+  cache:
+    driver: local
+  mypostgres:
+    driver: local

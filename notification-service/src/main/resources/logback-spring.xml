@@ -1,0 +1,42 @@
+<configuration>
+    <springProperty scope="context" name="fileName"
+                    source="spicelog.fileName"/>
+    <springProperty scope="context" name="fileNamePattern"
+                    source="spicelog.fileNamePattern"/>
+    <springProperty scope="context" name="consolePattern"
+                    source="spicelog.consolePattern"/>
+    <springProperty scope="context" name="filePattern"
+                    source="spicelog.filePattern"/>
+    <springProperty scope="context" name="maxHistory"
+                    source="spicelog.maxHistory"/>
+    <springProperty scope="context" name="totalSizeCap"
+                    source="spicelog.totalSizeCap"/>
+    <appender name="ConsoleOutput"
+              class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                ${consolePattern}
+            </Pattern>
+        </layout>
+    </appender>
+    <appender name="FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy
+                class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <FileNamePattern>${fileNamePattern}
+            </FileNamePattern>
+            <MaxHistory>${maxHistory}</MaxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>${filePattern}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="ConsoleOutput"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

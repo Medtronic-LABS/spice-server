@@ -1,0 +1,62 @@
+server:
+  servlet:
+    #contextPath: /user-service
+    contextPath: /
+  port: 8085
+
+#DB Config
+spring:
+  application:
+    name: user-service
+  main:
+    allow-bean-definition-overriding: true
+    allow-circular-references: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  flyway:
+    locations: classpath:db/migration
+    url: ${DATABASE_URL}
+    user: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    baseline-on-migrate: true
+    out-of-order: true
+    ignore-missing-migrations: true
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+
+springdoc:
+  packagesToScan: com.mdtlabs.coreplatform.userservice
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://servicediscovery:8761/eureka/
+
+app:
+  url: http://localhost
+  swagger-server-url: http://localhost:8085/
+  mail-user: ${MAIL_USER:apikey}
+  page-count: ${PAGE_COUNT:10}
+  login-time-limit-in-hour: ${LOGIN_TIME_LIMIT_IN_HOUR:1}
+  login-count-limit: ${LOGIN_COUNT_LIMIT:5}
+  forgot-password-time-limit-in-minutes: ${FORGOT_PASSWORD_TIME_LIMIT_IN_MINUTES:60}
+  forget-password-count-limit: ${FORGET_PASSWORD_COUNT_LIMIT:5}
+  reset-password-count-limit: ${RESET_PASSWORD_COUNT_LIMIT:5}
+  reset-password-time-limit-in-minutes: ${RESET_PASSWORD_TIME_LIMIT_IN_MINUTES:60}
+  email-app-url: ${EMAIL_APP_URL}
+  cfr-email-app-url: ${CFR_EMAIL_APP_URL}
+  public-key: public_key.der
+  private-key: private_key.der
+
+spicelog:
+  fileName: './log/SpiceApplicationLog.log'
+  fileNamePattern: './log/SpiceApplicationLog.%d{yyyy-MM-dd}.log.gz'
+  consolePattern: '%white(%d{ISO8601}) %highlight(%-5level) [%yellow(%t)] :  %msg%n%throwable'
+  filePattern: ' %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+  maxHistory: 30
+  totalSizeCap: 3GB

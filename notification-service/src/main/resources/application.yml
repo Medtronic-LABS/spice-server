@@ -1,0 +1,79 @@
+server:
+  servlet:
+    contextPath: /
+  port: 8084
+
+#DB Config
+spring:
+  application:
+    name: notification-service
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  enable:
+    scheduling:
+      email: ${MAIL_SEND}
+      sms: ${ENABLE_SMS_NOTIFICATION}
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://servicediscovery:8761/eureka/
+
+springdoc:
+  packagesToScan: com.mdtlabs.coreplatform.notificationservice
+
+scheduler:
+  cron:
+    email: '*/59 * * * * ?'
+    sms: '*/30 * * * * ?'
+
+app:
+  url: http://localhost
+  swagger-server-url: http://localhost:8084/
+  sendgrid-apikey: 1234
+  mail-from: ${MAIL_FROM}
+  mail-host: ${MAIL_HOST}
+  mail-port: ${MAIL_PORT:587}
+  mail-user: ${MAIL_USER}
+  mail-password: ${MAIL_PASSWORD}
+  mail-send: ${MAIL_SEND}
+  file-path: ${FILE_DIR_PATH}
+  public-key: public_key.der
+  private-key: private_key.der
+  email-retry-attempts: 3
+  sms-retry-attempts: 3
+  twilio-account-sid: ${TWILIO_ACCOUNT_SID:tyretyey436435}
+  twilio-auth-token: ${TWILIO_AUTH_TOKEN:gfhfdhdfg64564}
+  twilio-from-phoneno: ${TWILIO_FROM_PHONENO:+3535354}
+  enable-sms-notification-twilio: ${ENABLE_SMS_NOTIFICATION_TWILIO}
+  enable-sms-notification-sns: ${ENABLE_SMS_NOTIFICATION_SNS}
+  aws-access-key: ${AWS_ACCESS_KEY}
+  aws-secret-key: ${AWS_SECRET_KEY}
+  aws-region: ${SERVER_REGION}
+  shedlock:
+    sms:
+      start: ${SHEDLOCK_SMS_START}
+      stop: ${SHEDLOCK_SMS_STOP}
+    email:
+      start: ${SHEDLOCK_EMAIL_START}
+      stop: ${SHEDLOCK_EMAIL_STOP}
+
+spicelog:
+  fileName: './log/SpiceApplicationLog.log'
+  fileNamePattern: './log/SpiceApplicationLog.%d{yyyy-MM-dd}.log.gz'
+  consolePattern: '%white(%d{ISO8601}) %highlight(%-5level) [%yellow(%t)] :  %msg%n%throwable'
+  filePattern: ' %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+  maxHistory: 30
+  totalSizeCap: 3GB
