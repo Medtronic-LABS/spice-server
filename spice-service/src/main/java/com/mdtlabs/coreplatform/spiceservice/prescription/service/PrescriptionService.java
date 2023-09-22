@@ -1,5 +1,14 @@
 package com.mdtlabs.coreplatform.spiceservice.prescription.service;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Date;
+import java.util.List;
+
+import javax.validation.Valid;
+
+import io.minio.errors.MinioException;
+
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionResponseDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriberDTO;
@@ -10,12 +19,6 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Prescription;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PrescriptionHistory;
-
-import javax.validation.Valid;
-
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
 
 /**
  * <p>
@@ -30,12 +33,17 @@ import java.util.List;
 public interface PrescriptionService {
 
     /**
+     * <p>
      * This method is used to create or update a prescription based on the provided prescription request.
+     * </p>
      *
      * @param prescriptionRequestDto {@link PrescriptionRequestDTO} The prescriptionRequest contains
      *                               the data required to create or update a prescription is given
+     * @throws IOException Exception due to file handling
+     * @throws MinioException If the exceptions are thrown due to minio
+     * @throws GeneralSecurityException the key exception is thrown
      */
-    void createOrUpdatePrescription(@Valid PrescriptionRequestDTO prescriptionRequestDto) throws IOException;
+    void createOrUpdatePrescription(@Valid PrescriptionRequestDTO prescriptionRequestDto) throws IOException, MinioException, GeneralSecurityException;
 
     /**
      * <p>

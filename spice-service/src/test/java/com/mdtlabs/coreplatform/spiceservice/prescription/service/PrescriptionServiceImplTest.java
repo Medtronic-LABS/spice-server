@@ -22,6 +22,14 @@ import com.mdtlabs.coreplatform.spiceservice.prescription.repository.Prescriptio
 import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionRepository;
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.impl.PrescriptionServiceImpl;
 import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
+
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.PutObjectResult;
+import io.minio.MinioClient;
+import io.minio.ObjectWriteResponse;
+import io.minio.PutObjectArgs;
+import io.minio.errors.MinioException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +47,13 @@ import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.modelmapper.internal.InheritingConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -47,8 +61,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -90,6 +108,15 @@ public class PrescriptionServiceImplTest {
     @Mock
     private ModelMapper mapper;
 
+    @Mock
+    private PrescriptionRequestDTO prescriptionRequestDTOMocked;
+
+    @Mock
+    private MinioClient minioClient;
+
+    @Mock
+    private AmazonS3 s3Client;
+
     private Prescription prescription;
 
     private PrescriptionRequestDTO prescriptionRequestDTO;
@@ -97,9 +124,6 @@ public class PrescriptionServiceImplTest {
     private List<Prescription> prescriptions = new ArrayList<>();
 
     private List<PrescriptionHistory> prescriptionHistories = new ArrayList<>();
-
-    @Mock
-    private PrescriptionRequestDTO prescriptionRequestDTOMocked;
 
     public static Stream<Arguments> prescriptionHistoryData() {
         PatientVisit patientVisit = TestDataProvider.getPatientVisit();
@@ -608,5 +632,54 @@ public class PrescriptionServiceImplTest {
         prescriptionService.updatePrescriptionPatientVisit(prescriptionRequestDTO);
         verify(patientVisitService, atLeastOnce()).updatePatientVisit(patientVisit);
 
+    }
+
+    @Test
+    void uploadSignatureTestMinio() throws IOException, MinioException, GeneralSecurityException {
+        //given
+        ReflectionTestUtils.setField(prescriptionService, "isPrescriptionSignatureUploadedToMinio", true);
+        ReflectionTestUtils.setField(prescriptionService, "minioBucketName", "test");
+        ReflectionTestUtils.setField(prescriptionService, "minioUrl", "http://127.0.0.1:9090");
+        MockedStatic<PutObjectArgs> putObjectArgsMockedStatic = mockStatic(PutObjectArgs.class);
+        PutObjectArgs putObjectArgs = mock(PutObjectArgs.class);
+        PutObjectArgs.Builder builder = mock(PutObjectArgs.Builder.class);
+        ObjectWriteResponse objectWriteResponse = mock(ObjectWriteResponse.class);
+        MultipartFile file = mock(MultipartFile.class);
+        String location = "http://127.0.0.1:9090/browser/d7ea994dce38e0fae38884d6c83eaa95";
+
+        //when
+        when(file.getOriginalFilename()).thenReturn("test_signature.jpeg");
+        when(file.getBytes()).thenReturn(new byte[0]);
+        putObjectArgsMockedStatic.when(PutObjectArgs::builder).thenReturn(builder);
+        when(builder.bucket("test")).thenReturn(builder);
+        when(builder.object(anyString())).thenReturn(builder);
+        when(builder.stream(any(FileInputStream.class), anyLong(), anyLong())).thenReturn(builder);
+        when(builder.build()).thenReturn(putObjectArgs);
+        when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(objectWriteResponse);
+        when(objectWriteResponse.etag()).thenReturn("d7ea994dce38e0fae38884d6c83eaa95");
+
+        //then
+        String response = prescriptionService.uploadSignature(file, 1L, 1L);
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(location, response);
+    }
+
+    @Test
+    void uploadSignatureTestS3() throws IOException, MinioException, GeneralSecurityException {
+        //given
+        ReflectionTestUtils.setField(prescriptionService, "isPrescriptionSignatureUploadedToS3", true);
+        ReflectionTestUtils.setField(prescriptionService, "bucketName", "test");
+        PutObjectResult putObjectResult = mock(PutObjectResult.class);
+        MultipartFile file = mock(MultipartFile.class);
+        String location = "http://test";
+
+        //when
+        when(s3Client.putObject(any(PutObjectRequest.class))).thenReturn(putObjectResult);
+        when(s3Client.getUrl(anyString(), anyString())).thenReturn(new URL("http://test"));
+
+        //then
+        String response = prescriptionService.uploadSignature(file, 1L, 1L);
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(location, response);
     }
 }

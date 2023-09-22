@@ -42,7 +42,7 @@ scheduler:
 app:
   url: http://localhost
   swagger-server-url: http://localhost:8084/
-  sendgrid-apikey: 1234
+  sendgrid-apikey: ${SENDGRID_API_KEY}
   mail-from: ${MAIL_FROM}
   mail-host: ${MAIL_HOST}
   mail-port: ${MAIL_PORT:587}
