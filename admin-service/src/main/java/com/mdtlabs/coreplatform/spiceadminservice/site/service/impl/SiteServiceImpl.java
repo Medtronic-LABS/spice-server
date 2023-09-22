@@ -13,7 +13,6 @@ import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
@@ -24,9 +23,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import software.amazon.awssdk.services.ssm.SsmClient;
-import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
-import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
 
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.contexts.UserSelectedTenantContextHolder;
@@ -70,15 +66,6 @@ import com.mdtlabs.coreplatform.spiceadminservice.site.service.SiteService;
 @Service
 public class SiteServiceImpl implements SiteService {
 
-    @Value("${app.isCloud}")
-    String isCloud;
-
-    @Value("${app.mapApiKey}")
-    String mapApiKey;
-
-    @Value("${app.apiKeyPath}")
-    String apiKeyPath;
-
     @Autowired
     private DataRepository dataRepository;
 
@@ -92,9 +79,6 @@ public class SiteServiceImpl implements SiteService {
 
     @Autowired
     private RestTemplate restTemplate;
-
-    @Autowired
-    private SsmClient ssmClient;
 
     /**
      * {@inheritDoc}
@@ -310,27 +294,25 @@ public class SiteServiceImpl implements SiteService {
      * {@inheritDoc}
      */
     @Override
-    public List<Map<String, String>> getCitiesList(RequestDTO requestDto) {
+    public List<Map<String, String>> getCitiesList(RequestDTO requestDTO) {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<>(headers);
         List<Map<String, String>> citiesList = new ArrayList<>();
-        String apiKey = Boolean.parseBoolean(isCloud) ? getApiKey(apiKeyPath) : mapApiKey;
-        String url = Constants.HERE_MAP_AUTOCOMPLETE_URL + apiKey + Constants.QUERY
-                + requestDto.getSearchTerm() + Constants.MAX_RESULT_LIMIT;
+        String url = Constants.OSM_CITY_NAME_URL + requestDTO.getSearchTerm();
         ResponseEntity<String> responseValue = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         if (HttpStatus.OK.equals(responseValue.getStatusCode())) {
-            JSONObject response = new JSONObject(responseValue.getBody());
-            if (response.has(Constants.SUGGESTIONS)) {
-                JSONArray cities = response.getJSONArray(Constants.SUGGESTIONS);
-                for (int index = 0; index < cities.length(); index++) {
-                    JSONObject locationObj = cities.getJSONObject(index);
-                    if (locationObj.getString(Constants.MATCH_LEVEL).equals(Constants.CITY)
-                            || locationObj.getString(Constants.MATCH_LEVEL).equals(Constants.STATE)) {
-                        Map<String, String> city = new HashMap<>();
-                        city.put(Constants.LABEL, locationObj.getString(Constants.LABEL));
-                        city.put(Constants.VALUE, locationObj.getString(Constants.LOCATION_ID));
-                        citiesList.add(city);
-                    }
+            JSONArray cities = new JSONArray(responseValue.getBody());
+            for (int index = 0; index < cities.length(); index++) {
+                JSONObject locationObj = cities.getJSONObject(index);
+                if (locationObj.getString(Constants.ADDRESSTYPE).equals(Constants.CITY)
+                        || locationObj.getString(Constants.ADDRESSTYPE).equals(Constants.STATE)) {
+                    Map<String, String> city = new HashMap<>();
+                    city.put(Constants.LABEL, String.valueOf(locationObj.getLong(Constants.PLACE_ID)));
+                    city.put(Constants.VALUE, locationObj.getString(Constants.NAME));
+                    city.put(Constants.DISPLAY_NAME, locationObj.getString(Constants.DISPLAY_NAME));
+                    city.put(Constants.LATITUDE, locationObj.getString(Constants.LAT));
+                    city.put(Constants.LONGITUDE, locationObj.getString(Constants.LON));
+                    citiesList.add(city);
                 }
             }
         }
@@ -346,31 +328,17 @@ public class SiteServiceImpl implements SiteService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         Map<String, Object> responseMap = new HashMap<>();
         Map<String, Number> valuesMap = new HashMap<>();
-        String apiKey = Boolean.parseBoolean(isCloud) ? getApiKey(apiKeyPath) : mapApiKey;
         ResponseEntity<String> responseValue = restTemplate.exchange(
-                Constants.GEOCODE_URL + apiKey + Constants.LOCATION_ID_URL + requestDto.getLocationId(),
+                Constants.OSM_PLACE_ID_URL + requestDto.getLocationId(),
                 HttpMethod.GET, entity, String.class);
         JSONObject response;
         if (HttpStatus.OK.equals(responseValue.getStatusCode())) {
             response = new JSONObject(responseValue.getBody());
-            JSONArray resultList = response.getJSONObject(Constants.RESPONSE).getJSONArray(Constants.VIEW);
-            if (Constants.ZERO < resultList.length()) {
-                JSONObject result = resultList.getJSONObject(Constants.ZERO).getJSONArray(Constants.RESULT)
-                        .getJSONObject(Constants.ZERO);
-                if (result.has(Constants.LOCATION)
-                        && result.getJSONObject(Constants.LOCATION).has(Constants.ADDRESS)
-                        && result.getJSONObject(Constants.LOCATION).getJSONObject(Constants.ADDRESS)
-                        .has(Constants.COUNTY)) {
-                    responseMap.put(Constants.COUNTY.toLowerCase(),
-                            result.getJSONObject(Constants.LOCATION).getJSONObject(Constants.ADDRESS)
-                                    .getString(Constants.COUNTY));
-                }
-                JSONObject valuesObj = result.getJSONObject(Constants.LOCATION)
-                        .getJSONObject(Constants.DISPLAY_POSITION);
-                valuesMap.put(Constants.LATITUDE, valuesObj.getNumber(Constants.LATITUDE));
-                valuesMap.put(Constants.LONGITUDE, valuesObj.getNumber(Constants.LONGITUDE));
-                responseMap.put(Constants.VALUE, valuesMap);
-            }
+            responseMap.put(Constants.LOCALNAME, response.getString(Constants.LOCALNAME));
+            JSONObject valuesObj = response.getJSONObject(Constants.GEOMETRY);
+            valuesMap.put(Constants.LATITUDE, valuesObj.getJSONArray(Constants.COORDINATES).getNumber(1));
+            valuesMap.put(Constants.LONGITUDE, valuesObj.getJSONArray(Constants.COORDINATES).getNumber(0));
+            responseMap.put(Constants.VALUE, valuesMap);
         }
         return responseMap;
     }
@@ -438,29 +406,5 @@ public class SiteServiceImpl implements SiteService {
         siteDetailsDto
                 .setSiteLevel((Map.of(Constants.LABEL, site.getSiteLevel(), Constants.VALUE, site.getSiteLevel())));
         return siteDetailsDto;
-    }
-
-    /**
-     * <p>
-     * This method is used to retrieve an API key from AWS SSM Parameter Store using a specified path.
-     * </p>
-     *
-     * @param path {@link String} The path of the parameter in the AWS Systems Manager Parameter Store is given
-     * @return The API key obtained from the AWS SSM Parameter Store using the provided path is returned
-     */
-    public String getApiKey(String path) {
-        String apiKey;
-        try {
-            GetParameterRequest parameterRequest = GetParameterRequest.builder()
-                    .name(path)
-                    .withDecryption(Boolean.TRUE)
-                    .build();
-            GetParameterResponse parameterResponse = ssmClient.getParameter(parameterRequest);
-            apiKey = parameterResponse.parameter().value();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new BadRequestException(1006);
-        }
-        return apiKey;
     }
 }

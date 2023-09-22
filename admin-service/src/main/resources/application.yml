@@ -43,7 +43,7 @@ springdoc:
 app:
   url: http://localhost
   swagger-server-url: http://localhost:8086/
-  sendgrid-apikey: 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
+  sendgrid-apikey: ${SENDGRID_API_KEY}
   mail-from: notifications@test.com
   mail-host: ${MAIL_HOST:smtp.sendgrid.net}
   mail-port: ${MAIL_PORT:587}
@@ -58,9 +58,6 @@ app:
   forget-password-count-limit: ${FORGET_PASSWORD_COUNT_LIMIT:5}
   public-key: public_key.der
   private-key: private_key.der
-  isCloud: ${IS_CLOUD:false}
-  mapApiKey: ${HERE_MAP_API_KEY:""}
-  apiKeyPath: ${API_KEY_PATH}
   connectionTimeOut: 30000
   readTimeOut: 30000
 
