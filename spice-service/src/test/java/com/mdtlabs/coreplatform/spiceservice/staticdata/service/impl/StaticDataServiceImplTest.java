@@ -350,7 +350,6 @@ class StaticDataServiceImplTest {
     void checkAppVersionNullTest() {
         ReflectionTestUtils.setField(staticDataService, "appVersion", "1.0.5");
         boolean response = staticDataService.checkAppVersion(null);
-        assertNotNull(response);
         assertFalse(response);
     }
 
@@ -358,7 +357,6 @@ class StaticDataServiceImplTest {
     void checkAppVersionTest() {
         ReflectionTestUtils.setField(staticDataService, "appVersion", "1.0.5");
         boolean response = staticDataService.checkAppVersion("1.0.6");
-        assertNotNull(response);
         assertFalse(response);
     }
 
@@ -366,7 +364,6 @@ class StaticDataServiceImplTest {
     void checkAppVersion() {
         ReflectionTestUtils.setField(staticDataService, "appVersion", "1.0.5");
         boolean response = staticDataService.checkAppVersion("1.0.5");
-        assertNotNull(response);
         assertTrue(response);
     }
 }

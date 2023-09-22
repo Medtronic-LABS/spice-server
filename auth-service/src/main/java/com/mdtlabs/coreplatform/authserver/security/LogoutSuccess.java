@@ -73,7 +73,7 @@ public class LogoutSuccess implements LogoutHandler {
         try {
             userDetail = getUserDetails(token.substring(Constants.BEARER.length()));
         } catch (JsonProcessingException | ParseException e) {
-            e.printStackTrace();
+            Logger.logError(e.getMessage());
         }
         String redisKey = null;
         if (userDetail != null) {

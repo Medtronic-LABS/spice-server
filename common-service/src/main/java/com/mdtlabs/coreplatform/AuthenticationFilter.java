@@ -399,7 +399,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                     } else {
                         apiRoleMap = apiPermissionMap.get(api.getMethod());
                     }
-                    apiRoleMap.put(api.getApi(), Arrays.asList(api.getRoles().split("\\s*,\\s*")));
+                    apiRoleMap.put(api.getApi(), Arrays.asList(api.getRoles().split(Constants.SPACE_COMMA_SPACE_SPLIT_PATTERN)));
                     apiPermissionMap.put(api.getMethod(), apiRoleMap);
                 }
             });

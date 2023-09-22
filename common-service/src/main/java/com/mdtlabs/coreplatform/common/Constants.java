@@ -491,8 +491,11 @@ public final class Constants {
     public static final String COUNTY = "County";
     public static final String DISPLAY_POSITION = "DisplayPosition";
     public static final String ADDRESS = "Address";
-    public static final String GEOCODE_URL = "https://geocoder.ls.hereapi.com/6.2/geocode.json?apiKey=";
-    public static final String HERE_MAP_AUTOCOMPLETE_URL = "https://autocomplete.geocoder.ls.hereapi.com/6.2/suggest.json?apiKey=";
+    public static final String OSM_CITY_NAME_URL = "https://nominatim.openstreetmap" +
+            ".org/search?format=json&accept-language=en&q=";
+
+    public static final String OSM_PLACE_ID_URL = "https://nominatim.openstreetmap.org/details" +
+            ".php?format=json&accept-language=en&place_id=";
     public static final String METHOD_POST = "POST";
     public static final String METHOD_PUT = "PUT";
     public static final String METHOD_PATCH = "PATCH";
@@ -540,6 +543,15 @@ public final class Constants {
             NEXT_BP_ASSESSMENT_NOTIFICATION, NEXT_BG_ASSESSMENT_NOTIFICATION);
     public static final String OUTBOUND_NAME = "{{name}}";
     public static final String OUTBOUND_SITE_NAME = "{{site_name}}";
+    public static final String LOCALNAME = "localname";
+    public static final String GEOMETRY = "geometry";
+    public static final String COORDINATES = "coordinates";
+    public static final String ADDRESSTYPE = "addresstype";
+    public static final String DISPLAY_NAME = "display_name";
+    public static final String PLACE_ID = "place_id";
+    public static final String LAT = "lat";
+    public static final String LON = "lon";
+    public static final String BROWSER = "browser";
     public static List<Complaints> COMPLAINTS = new ArrayList<>();
     public static List<NutritionLifestyle> NUTRITION_LIFESTYLES = new ArrayList<>();
     public static List<PhysicalExamination> PHYSICAL_EXAMINATIONS = new ArrayList<>();
@@ -561,6 +573,7 @@ public final class Constants {
     public static Map<Long, Map<String, Map<Long, Object>>> JSON_CULTURE_VALUES_MAP = new HashMap<>();
     public static List<CultureDTO> CULTURE_LIST = new ArrayList<>();
     public static List<FrequencyType> FREQUENCY_TYPE = new ArrayList<>();
+    public static final String SPACE_COMMA_SPACE_SPLIT_PATTERN = "\\s*,\\s*";
 
     private Constants() {
     }
