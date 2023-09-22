@@ -1,7 +1,6 @@
 package com.mdtlabs.coreplatform.spiceadminservice.site.service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +41,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import com.mdtlabs.coreplatform.common.Constants;
@@ -553,26 +551,43 @@ class SiteServiceTest {
     @Test
     void testGetCitiesList() {
         //given
-        JSONObject cities = new JSONObject();
-        JSONArray jsonArray = new JSONArray();
-        jsonArray.put(new JSONObject(Map.of("label", "cairo", "matchLevel", "city", "locationId", "NT_oRSHr-MUgW3-zYS5dSI.SD")));
-        jsonArray.put(new JSONObject(Map.of("label", "lagos", "matchLevel", "city", "locationId", "NT_oRSHr-MUgW3-zYS5dSI.SD")));
-        jsonArray.put(new JSONObject(Map.of("label", "luanda", "matchLevel", "state", "locationId", "NT_oRSHr-MUgW3-zYS5dSI.SD")));
-        cities.put(Constants.SUGGESTIONS, jsonArray);
-
-        RequestDTO requestDTO = TestDataProvider.getRequestDto(true, TestConstants.ONE);
-        requestDTO.setSearchTerm(Constants.SEARCH_TERM);
-        ReflectionTestUtils.setField(siteService, "isCloud", "false");
-        ReflectionTestUtils.setField(siteService, "mapApiKey", "mapApiKey");
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
-        String url = Constants.HERE_MAP_AUTOCOMPLETE_URL + "mapApiKey" + Constants.QUERY
-                + requestDTO.getSearchTerm() + Constants.MAX_RESULT_LIMIT;
-        ResponseEntity<String> responseValue = new ResponseEntity<>(cities.toJSONString(), HttpStatus.OK);
         List<Map<String, String>> citiesList = new ArrayList<>();
-        citiesList.add(Map.of(Constants.LABEL, "cairo", Constants.VALUE, "NT_oRSHr-MUgW3-zYS5dSI.SD"));
-        citiesList.add(Map.of(Constants.LABEL, "lagos", Constants.VALUE, "NT_oRSHr-MUgW3-zYS5dSI.SD"));
-        citiesList.add(Map.of(Constants.LABEL, "luanda", Constants.VALUE, "NT_oRSHr-MUgW3-zYS5dSI.SD"));
+        JSONArray jsonArray = new JSONArray();
+        Map<String, String> map = Map.of("display_name", "Dhaka",
+                "lat", "23.7644025",
+                "place_id", "3442474911",
+                "name", "Dhaka",
+                "lon", "90.389015",
+                "addresstype", "city");
+        JSONObject jsonObject = new JSONObject(map);
+        jsonArray.put(jsonObject);
+        jsonArray.put(new JSONObject(Map.of("display_name", "Chennai",
+                "lat", "21.2443432",
+                "place_id", "3443424912",
+                "name", "Chennai",
+                "lon", "94.389215",
+                "addresstype", "city")));
+        jsonArray.put(new JSONObject(Map.of("display_name", "Tamil Nadu",
+                "lat", "11.24233432",
+                "place_id", "3443424913",
+                "name", "Tamil Nadu",
+                "lon", "92.349215",
+                "addresstype", "state")));
+        ResponseEntity<String> responseValue = new ResponseEntity<>(jsonArray.toString(), HttpStatus.OK);
+        ResponseEntity<String> responseValueNotOK = new ResponseEntity<>(jsonArray.toString(), HttpStatus.BAD_REQUEST);
+        RequestDTO requestDTO = TestDataProvider.getRequestDto(true, TestConstants.ONE);
+        requestDTO.setSearchTerm(Constants.SEARCH_TERM);
+        String url = Constants.OSM_CITY_NAME_URL + requestDTO.getSearchTerm();
+        citiesList.add(Map.of("value", "3442474911",
+                "label", "Dhaka"));
+        citiesList.add(Map.of(
+                "value", "3443424912",
+                "label", "Chennai"));
+        citiesList.add(Map.of(
+                "value", "3443424913",
+                "label", "Tamil Nadu"));
 
         //when
         when(restTemplate.exchange(url, HttpMethod.GET, entity, String.class)).thenReturn(responseValue);
@@ -580,59 +595,38 @@ class SiteServiceTest {
         //then
         List<Map<String, String>> actualCities = siteService.getCitiesList(requestDTO);
         assertNotNull(actualCities);
+        assertEquals("city", jsonObject.get("addresstype"));
         assertFalse(actualCities.isEmpty());
         assertEquals(citiesList.size(), actualCities.size());
-        assertEquals(citiesList.get(0), actualCities.get(0));
+        assertEquals(citiesList.get(0).get("label"), actualCities.get(0).get("label"));
+        assertEquals(citiesList.get(0).get("value"), actualCities.get(0).get("value"));
     }
 
     @Test
     void testGetCityCoordinates() {
         //given
-        Map<String, Double> displayPositionMap = new HashMap<>();
-        displayPositionMap.put("Latitude", 8.36429);
-        displayPositionMap.put("Longitude", -70.66757);
-
-        Map<String, String> addressMap = new HashMap<>();
-        addressMap.put("County", "VEN");
-        addressMap.put("State", "Zulia");
-
-        Map<String, Object> locationMap = new HashMap<>();
-        locationMap.put("DisplayPosition", displayPositionMap);
-        locationMap.put("Address", addressMap);
-
-        JSONArray results = new JSONArray();
-        results.put(Map.of("Location", locationMap));
-
-        JSONArray view = new JSONArray();
-        view.put(Map.of("Result", results));
-        JSONObject viewObject = new JSONObject();
-        viewObject.put(Constants.VIEW, view);
-        JSONObject coordinates = new JSONObject();
-        coordinates.put(Constants.RESPONSE, viewObject);
-
-        RequestDTO requestDTO = TestDataProvider.getRequestDto(true, TestConstants.ONE);
-        requestDTO.setSearchTerm(Constants.SEARCH_TERM);
-        requestDTO.setLocationId("NT_oRSHr-MUgW3-zYS5dSI.SD");
-        ReflectionTestUtils.setField(siteService, "isCloud", "false");
-        ReflectionTestUtils.setField(siteService, "mapApiKey", "mapApiKey");
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
-        ResponseEntity<String> responseValue = new ResponseEntity<>(coordinates.toJSONString(), HttpStatus.OK);
-        Map<String, Number> valuesMap = new HashMap<String, Number>();
-        Map<String, Object> responseMap = new HashMap<String, Object>();
-        valuesMap.put(Constants.LATITUDE, 8.36429);
-        valuesMap.put(Constants.LONGITUDE, -70.66757);
-        responseMap.put(Constants.COUNTY.toLowerCase(), "VEN");
-        responseMap.put(Constants.VALUE, valuesMap);
+        RequestDTO requestDTO = TestDataProvider.getRequestDto(true, TestConstants.ONE);
+        requestDTO.setLocationId("3442474911");
+        String url = Constants.OSM_PLACE_ID_URL + requestDTO.getLocationId();
+
+        JSONArray coordinates = new JSONArray();
+        coordinates.put("90.389015");
+        coordinates.put("23.7644025");
+        JSONObject geometry = new JSONObject(Map.of("coordinates", coordinates));
+        JSONObject response = new JSONObject(Map.of(Constants.LOCALNAME, "Dhaka", Constants.GEOMETRY, geometry));
+
+        ResponseEntity<String> responseValue = new ResponseEntity<>(response.toJSONString(), HttpStatus.OK);
 
         //when
-        when(restTemplate.exchange(Constants.GEOCODE_URL + "mapApiKey" + Constants.LOCATION_ID_URL + requestDTO.getLocationId(), HttpMethod.GET, entity, String.class)).thenReturn(responseValue);
+        when(restTemplate.exchange(url, HttpMethod.GET, entity, String.class)).thenReturn(responseValue);
 
         //then
         Map<String, Object> actualCoordinates = siteService.getCityCoordinates(requestDTO);
         assertNotNull(actualCoordinates);
         assertFalse(actualCoordinates.isEmpty());
-        assertEquals(responseMap.size(), actualCoordinates.size());
+        assertEquals(response.size(), actualCoordinates.size());
         assertTrue(actualCoordinates.containsKey(Constants.VALUE));
     }
 }

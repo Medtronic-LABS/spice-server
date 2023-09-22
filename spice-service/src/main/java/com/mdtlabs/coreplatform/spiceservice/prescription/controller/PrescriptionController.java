@@ -20,6 +20,7 @@ import com.mdtlabs.coreplatform.spiceservice.message.SuccessCode;
 import com.mdtlabs.coreplatform.spiceservice.message.SuccessResponse;
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.PrescriptionService;
 
+import io.minio.errors.MinioException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
@@ -90,9 +92,12 @@ public class PrescriptionController {
     private void createOrUpdatePrescriptionRequest(PrescriptionRequestDTO prescriptionRequestDto) {
         try {
             prescriptionService.createOrUpdatePrescription(prescriptionRequestDto);
-        } catch (IOException iOException) {
-            Logger.logError(iOException);
-            throw new SpiceValidation(1513, iOException.getMessage());
+        } catch (IOException ioException) {
+            Logger.logError(ioException);
+            throw new SpiceValidation(1513, ioException.getMessage());
+        } catch (MinioException | GeneralSecurityException minioException) {
+            Logger.logError(minioException);
+            throw new SpiceValidation(1515, minioException.getMessage());
         }
     }
 
