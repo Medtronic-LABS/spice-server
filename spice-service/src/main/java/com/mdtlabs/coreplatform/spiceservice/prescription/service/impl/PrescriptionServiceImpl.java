@@ -1,7 +1,40 @@
 package com.mdtlabs.coreplatform.spiceservice.prescription.service.impl;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import io.minio.MinioClient;
+import io.minio.ObjectWriteResponse;
+import io.minio.PutObjectArgs;
+import io.minio.errors.MinioException;
+import org.modelmapper.Conditions;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.contexts.UserContextHolder;
@@ -36,35 +69,6 @@ import com.mdtlabs.coreplatform.spiceservice.prescription.repository.Prescriptio
 import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionRepository;
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.PrescriptionService;
 
-import org.modelmapper.Conditions;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 /**
  * <p>
  * PrescriptionServiceImpl class implements various methods for managing prescription, including adding, updating,
@@ -87,6 +91,15 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
     @Value("${app.is-prescription-signature-uploaded-to-s3}")
     private boolean isPrescriptionSignatureUploadedToS3;
+
+    @Value("${app.is-prescription-signature-uploaded-to-minio}")
+    private boolean isPrescriptionSignatureUploadedToMinio;
+
+    @Value("${application.minio-bucket.name}")
+    String minioBucketName;
+
+    @Value("${cloud.minio.credentials.console-url}")
+    String minioUrl;
 
     @Autowired
     private AdminApiInterface adminApiInterface;
@@ -115,13 +128,16 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     @Autowired
     private UserApiInterface userApiInterface;
 
+    @Autowired
+    MinioClient minioClient;
+
     /**
      * {@inheritDoc}
      *
      * @throws IOException
      */
     @Transactional
-    public void createOrUpdatePrescription(PrescriptionRequestDTO prescriptionRequest) throws IOException {
+    public void createOrUpdatePrescription(PrescriptionRequestDTO prescriptionRequest) throws IOException, GeneralSecurityException, MinioException {
         if (Objects.isNull(prescriptionRequest)) {
             throw new BadRequestException(1000);
         }
@@ -260,8 +276,8 @@ public class PrescriptionServiceImpl implements PrescriptionService {
             if (DateUtil.isSameDate(new Date(), prescription.getEndDate(), Calendar.DATE)) {
                 prescriptionRemainingDays = Constants.ONE;
             } else if (prescription.getEndDate().after(new Date())) {
-                prescriptionRemainingDays =DateUtil.getCalendarDiff(new Date(), prescription.getEndDate())
-                    + Constants.TWO;
+                prescriptionRemainingDays = DateUtil.getCalendarDiff(new Date(), prescription.getEndDate())
+                        + Constants.TWO;
             }
 
             PrescriptionDTO prescriptionDto = new PrescriptionDTO();
@@ -440,7 +456,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
      * @param patientVisitId {@link Long} The patientVisit ID need to set is given
      * @return {@link String} The method returns a String representing the location of the uploaded signature file
      */
-    public String uploadSignature(MultipartFile file, Long patientTrackId, Long patientVisitId) throws IOException {
+    public String uploadSignature(MultipartFile file, Long patientTrackId, Long patientVisitId) throws IOException, MinioException, GeneralSecurityException {
         File fileObj = convertMultipartFileToFile(file);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Constants.SIGNATURE_DATE_FORMAT)
                 .withZone(ZoneId.of(Constants.TIMEZONE_UTC));
@@ -457,6 +473,12 @@ public class PrescriptionServiceImpl implements PrescriptionService {
             if (Objects.nonNull(fileObj)) {
                 Files.delete(fileObj.toPath());
             }
+        } else if (isPrescriptionSignatureUploadedToMinio) {
+            FileInputStream inputStream = new FileInputStream(fileObj);
+            PutObjectArgs putObjectArgs = PutObjectArgs.builder().bucket(minioBucketName)
+                    .object(fileName).stream(inputStream, 1567, -1).build();
+            ObjectWriteResponse response = minioClient.putObject(putObjectArgs);
+            location = minioUrl + Constants.FORWARD_SLASH + Constants.BROWSER + Constants.FORWARD_SLASH + response.etag();
         } else {
             try (InputStream inputStream = new FileInputStream(fileObj)) {
                 String destinationLocation = filePath + Constants.FORWARD_SLASH + fileName;

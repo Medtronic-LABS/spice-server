@@ -43,7 +43,7 @@ springdoc:
 app:
   url: http://localhost
   swagger-server-url: http://localhost:8087/
-  sendgrid-apikey: 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
+  sendgrid-apikey: ${SENDGRID_API_KEY}
   mail-from: notifications@test.com
   mail-host: ${MAIL_HOST:smtp.sendgrid.net}
   mail-port: ${MAIL_PORT:587}
@@ -68,6 +68,7 @@ app:
       start: ${SHEDLOCK_OUTBOUND_START}
       stop: ${SHEDLOCK_OUTBOUND_STOP}
   is-prescription-signature-uploaded-to-s3: ${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_S3}
+  is-prescription-signature-uploaded-to-minio: ${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_MINIO}
 
 cloud:
   aws:
@@ -78,10 +79,18 @@ cloud:
       static: ${SERVER_REGION}
     stack:
       auto: false
+  minio:
+    credentials:
+      console-url: ${CONSOLE_URL_MINIO}
+      url: ${URL_MINIO}
+      access-name: ${ACCESS_NAME_MINIO}
+      access-secret: ${ACCESS_SECRET_MINIO}
 
 application:
   bucket:
     name: ${BUCKET_NAME}
+  minio-bucket:
+    name: ${BUCKET_NAME_MINIO}
 
 scheduler:
   cron:
