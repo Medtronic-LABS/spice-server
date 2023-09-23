@@ -37,4 +37,4 @@ jobs:
         run: |
           mvn clean install
           mvn -N wrapper:wrapper
-          ./mvnw -B verify sonar:sonar -Dsonar.projectKey=medtronic-labs_spice-server -Dsonar.organization=medtronic-labs -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN -Dsonar.projectName=spice-server
+          ./mvnw -B verify sonar:sonar -Dsonar.projectKey=SDivya229_spice-server -Dsonar.organization=sdivya229 -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONAR_TOKEN -Dsonar.projectName=spice-server
