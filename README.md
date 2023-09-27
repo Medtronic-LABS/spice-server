@@ -259,13 +259,11 @@ S3 bucket.
 
 `EMAIL_APP_URL`: This property specifies the app url of the application
 
-> Note: Providing an alternative solution to AWS services using open-source and free services.
+## Alternative solution to AWS services using open-source and free service.
 
-## Open Source Alternatives
-
--   Storage Service - [MinIO]
--   Mail Service - [SendGrid]
--   SMS Service - [Twilio]
+-   Storage Service - [MinIO](Open Source)
+-   Mail Service - [SendGrid](Free service)
+-   SMS Service - [Twilio](Free service)
 
 > Note: When you choose to use the open-source MinIO service for storage.
 
@@ -285,7 +283,7 @@ S3 bucket.
 
 ### Sendgrid Mail service Setup
 
-> Note: When you choose to use the open-source Sendgrid email service, follow the below instructions.
+> Note: When you choose to use the Sendgrid email free service, follow the below instructions.
 
 - Add the sendgrid dependency in the file: spice-server/backend/notification-service/pom.xml
 ```sh
@@ -323,7 +321,7 @@ S3 bucket.
 
 ### Twilio SMS service Setup
 
-> Note: When you choose to use the open-source Twilio SMS service, follow the below instructions.
+> Note: When you choose to use the Twilio SMS free service, follow the below instructions.
 
 - Visit the [Twilio] official site and create a free account to get the account sid, auth token and twilio phone number.
 
