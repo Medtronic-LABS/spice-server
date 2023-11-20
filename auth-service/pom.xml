@@ -24,7 +24,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
         <springfox-version>2.10.5</springfox-version>
-        <postgres-version>42.4.0</postgres-version>
+        <postgres-version>42.6.0</postgres-version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <!--  JaCoCo Properties  -->
         <jacoco.version>0.8.8</jacoco.version>
