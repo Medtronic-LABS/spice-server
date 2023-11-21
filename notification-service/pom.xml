@@ -25,7 +25,7 @@
         <java.version>17</java.version>
         <javax-mail.version>1.5.0-b01</javax-mail.version>
         <springfox-version>3.0.0</springfox-version>
-        <postgres-version>42.4.0</postgres-version>
+        <postgres-version>42.6.0</postgres-version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <springdoc-webmvc-core.version>1.5.13</springdoc-webmvc-core.version>
         <spring-messaging.version>5.3.24</spring-messaging.version>

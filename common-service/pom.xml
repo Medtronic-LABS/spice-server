@@ -29,12 +29,11 @@
         <apache-collections4-version>4.4</apache-collections4-version>
         <jjwt-version>0.9.1</jjwt-version>
         <lombok-version>1.18.24</lombok-version>
-        <jackson-core-version>2.13.3</jackson-core-version>
-        <spring-web.version>5.3.21</spring-web.version>
+        <jackson-core-version>2.16.0</jackson-core-version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <spring-cloud-starter-openfeign.version>4.0.1</spring-cloud-starter-openfeign.version>
         <spring-cloud-openfeign-core>4.0.1</spring-cloud-openfeign-core>
-        <json.version>20220924</json.version>
+        <json.version>20231013</json.version>
         <nimbusds.version>9.23</nimbusds.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <jaxb-core.version>2.3.0.1</jaxb-core.version>
@@ -178,12 +177,6 @@
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
             <version>${jjwt-version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
-            <version>${spring-web.version}</version>
         </dependency>
 
         <!-- JWE dependency -->
