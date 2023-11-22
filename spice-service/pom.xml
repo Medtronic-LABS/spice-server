@@ -24,7 +24,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
         <springfox-version>3.0.0</springfox-version>
-        <postgres-version>42.4.0</postgres-version>
+        <postgres-version>42.6.0</postgres-version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <aws-java-sdk-core.version>1.12.331</aws-java-sdk-core.version>
         <aws-java-sdk-s3.version>1.12.331</aws-java-sdk-s3.version>
