@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -507,8 +508,10 @@ public class PrescriptionServiceImpl implements PrescriptionService {
      */
     private File convertMultipartFileToFile(MultipartFile file) {
         File convertedFile = null;
+        String targetDirectory = filePath;
+        Path targetPath = new File(targetDirectory).toPath().normalize();
         if (Objects.nonNull(file) && Objects.nonNull(file.getOriginalFilename())) {
-            convertedFile = new File(file.getOriginalFilename());
+            convertedFile = new File(targetPath + file.getOriginalFilename());
             try (FileOutputStream fos = new FileOutputStream(convertedFile)) {
                 fos.write(file.getBytes());
             } catch (IOException e) {
