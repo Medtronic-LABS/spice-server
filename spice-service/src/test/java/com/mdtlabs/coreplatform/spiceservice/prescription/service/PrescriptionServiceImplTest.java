@@ -38,9 +38,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -50,9 +48,12 @@ import org.modelmapper.internal.InheritingConfiguration;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -61,9 +62,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -637,6 +636,7 @@ public class PrescriptionServiceImplTest {
     @Test
     void uploadSignatureTestMinio() throws IOException, MinioException, GeneralSecurityException {
         //given
+        ReflectionTestUtils.setField(prescriptionService, "filePath", "/Prescription_Signatures/");
         ReflectionTestUtils.setField(prescriptionService, "isPrescriptionSignatureUploadedToMinio", true);
         ReflectionTestUtils.setField(prescriptionService, "minioBucketName", "test");
         ReflectionTestUtils.setField(prescriptionService, "minioUrl", "http://127.0.0.1:9090");
@@ -646,10 +646,19 @@ public class PrescriptionServiceImplTest {
         ObjectWriteResponse objectWriteResponse = mock(ObjectWriteResponse.class);
         MultipartFile file = mock(MultipartFile.class);
         String location = "http://127.0.0.1:9090/browser/d7ea994dce38e0fae38884d6c83eaa95";
-
         //when
-        when(file.getOriginalFilename()).thenReturn("test_signature.jpeg");
-        when(file.getBytes()).thenReturn(new byte[0]);
+        Path path = mock(Path.class);
+        MockedConstruction<File> fileMockedConstruction = Mockito.mockConstruction(File.class, (file1, context) -> {
+            when(file1.toPath()).thenReturn(path);
+            when(path.normalize()).thenReturn(path);
+        });
+        MockedConstruction<FileOutputStream> fileOutputStreamMockedConstruction = Mockito.mockConstruction(FileOutputStream.class, (fileOutput, context) -> {
+            doNothing().when(fileOutput).write(any(byte[].class));
+        });
+        MockedConstruction<FileInputStream> fileInputStreamMockedConstruction = Mockito.mockConstruction(FileInputStream.class, (fileInput, context) -> {
+        });
+        when(file.getOriginalFilename()).thenReturn("/test_signature.jpeg");
+        when(file.getBytes()).thenReturn(new byte[10]);
         putObjectArgsMockedStatic.when(PutObjectArgs::builder).thenReturn(builder);
         when(builder.bucket("test")).thenReturn(builder);
         when(builder.object(anyString())).thenReturn(builder);
@@ -662,6 +671,9 @@ public class PrescriptionServiceImplTest {
         String response = prescriptionService.uploadSignature(file, 1L, 1L);
         Assertions.assertNotNull(response);
         Assertions.assertEquals(location, response);
+        fileMockedConstruction.close();
+        fileOutputStreamMockedConstruction.close();
+        fileInputStreamMockedConstruction.close();
     }
 
     @Test
@@ -672,6 +684,7 @@ public class PrescriptionServiceImplTest {
         PutObjectResult putObjectResult = mock(PutObjectResult.class);
         MultipartFile file = mock(MultipartFile.class);
         String location = "http://test";
+        ReflectionTestUtils.setField(prescriptionService, "filePath", "/Prescription_Signatures/");
 
         //when
         when(s3Client.putObject(any(PutObjectRequest.class))).thenReturn(putObjectResult);
