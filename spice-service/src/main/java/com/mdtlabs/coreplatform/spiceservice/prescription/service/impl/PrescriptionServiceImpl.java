@@ -132,6 +132,16 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     @Autowired
     MinioClient minioClient;
 
+    private Path targetPath;
+
+    public void setTargetDirectory(String targetDirectory) {
+        if (targetDirectory == null || targetDirectory.isEmpty()) {
+            throw new IllegalArgumentException("targetDirectory cannot be null or empty");
+        }
+
+        this.targetPath = new File(targetDirectory).toPath().normalize();
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -506,13 +516,13 @@ public class PrescriptionServiceImpl implements PrescriptionService {
      *             File object is given
      * @return {@link File} The File for the given MultipartFile is converted and returned
      */
-    private File convertMultipartFileToFile(MultipartFile file) {
-        System.out.println("Hiiiiiiiiiiiiiiiii");
+    private File convertMultipartFileToFile(MultipartFile file) throws IOException {
         File convertedFile = null;
-        String targetDirectory = filePath;
-        Path targetPath = new File(targetDirectory).toPath().normalize();
         if (Objects.nonNull(file) && Objects.nonNull(file.getOriginalFilename())) {
             convertedFile = new File(targetPath + file.getOriginalFilename());
+            if (!convertedFile.toPath().normalize().startsWith(targetPath)) {
+                throw new IOException("Entry is outside of the target directory");
+            }
             try (FileOutputStream fos = new FileOutputStream(convertedFile)) {
                 fos.write(file.getBytes());
             } catch (IOException e) {
