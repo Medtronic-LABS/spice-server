@@ -507,6 +507,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
      * @return {@link File} The File for the given MultipartFile is converted and returned
      */
     private File convertMultipartFileToFile(MultipartFile file) {
+        System.out.println("Hiiiiiiiiiiiiiiiii");
         File convertedFile = null;
         String targetDirectory = filePath;
         Path targetPath = new File(targetDirectory).toPath().normalize();
