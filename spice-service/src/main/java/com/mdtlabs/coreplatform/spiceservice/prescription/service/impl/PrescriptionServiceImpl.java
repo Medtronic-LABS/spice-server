@@ -518,6 +518,8 @@ public class PrescriptionServiceImpl implements PrescriptionService {
      */
     private File convertMultipartFileToFile(MultipartFile file) throws IOException {
         File convertedFile = null;
+        String targetDirectory = filePath;
+        Path targetPath = new File(targetDirectory).toPath().normalize();
         if (Objects.nonNull(file) && Objects.nonNull(file.getOriginalFilename())) {
             convertedFile = new File(targetPath + file.getOriginalFilename());
             if (!convertedFile.toPath().normalize().startsWith(targetPath)) {
