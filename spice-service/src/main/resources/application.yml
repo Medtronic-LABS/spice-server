@@ -31,6 +31,12 @@ spring:
       hibernate:
         order_by:
           default_null_ordering: last
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
 
 eureka:
   client:
@@ -63,12 +69,21 @@ app:
   is-next-bp-job: ${IS_NEXT_BP_JOB}
   is-next-bg-job: ${IS_NEXT_BG_JOB}
   app-version: ${APP_VERSION}
+  enableFhir: ${ENABLE_FHIR}
   shedlock:
     outbound:
       start: ${SHEDLOCK_OUTBOUND_START}
       stop: ${SHEDLOCK_OUTBOUND_STOP}
   is-prescription-signature-uploaded-to-s3: ${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_S3}
   is-prescription-signature-uploaded-to-minio: ${IS_PRESCRIPTION_SIGNATURE_UPLOADED_TO_MINIO}
+  rabbitmq:
+    queue:
+      name: ${RABBITMQ_QUEUE_NAME}
+    exchange:
+      name: ${RABBITMQ_EXCHANGE_NAME}
+    routing:
+      key:
+        name: ${RABBITMQ_ROUTING_KEY_NAME}
 
 cloud:
   aws:
@@ -103,3 +118,4 @@ spicelog:
   filePattern: ' %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
   maxHistory: 30
   totalSizeCap: 3GB
+
