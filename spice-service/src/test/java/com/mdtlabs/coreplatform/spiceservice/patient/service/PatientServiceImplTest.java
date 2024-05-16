@@ -1,5 +1,44 @@
 package com.mdtlabs.coreplatform.spiceservice.patient.service;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.internal.InheritingConfiguration;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.simple.SimpleJdbcCall;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.UnitConstants;
 import com.mdtlabs.coreplatform.common.contexts.UserContextHolder;
@@ -7,12 +46,15 @@ import com.mdtlabs.coreplatform.common.contexts.UserSelectedTenantContextHolder;
 import com.mdtlabs.coreplatform.common.exception.DataConflictException;
 import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
+import com.mdtlabs.coreplatform.common.model.dto.SmsDTO;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.DiagnosisDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.EnrollmentRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.EnrollmentResponseDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.GetRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.LifestyleDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PatientDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.PatientDetailDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.PatientGetRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.PatientRequestDTO;
@@ -23,6 +65,7 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.ResponseListDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.UserListDTO;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
+import com.mdtlabs.coreplatform.common.model.entity.SMSTemplate;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
 import com.mdtlabs.coreplatform.common.model.entity.spice.BpLog;
 import com.mdtlabs.coreplatform.common.model.entity.spice.CustomizedModule;
@@ -30,6 +73,7 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.GlucoseLog;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Lifestyle;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Patient;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PatientAssessment;
+import com.mdtlabs.coreplatform.common.model.entity.spice.PatientDiagnosis;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PatientLifestyle;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PatientPregnancyDetails;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PatientTracker;
@@ -41,6 +85,7 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.ScreeningLog;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
 import com.mdtlabs.coreplatform.common.util.ConversionUtil;
 import com.mdtlabs.coreplatform.spiceservice.AdminApiInterface;
+import com.mdtlabs.coreplatform.spiceservice.NotificationApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.UserApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.assessment.repository.PatientAssessmentRepository;
 import com.mdtlabs.coreplatform.spiceservice.bplog.repository.BpLogRepository;
@@ -84,36 +129,6 @@ import com.mdtlabs.coreplatform.spiceservice.prescription.repository.Prescriptio
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.PrescriptionService;
 import com.mdtlabs.coreplatform.spiceservice.screeninglog.service.ScreeningLogService;
 import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.internal.InheritingConfiguration;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
-import org.springframework.jdbc.core.simple.SimpleJdbcCall;
-
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 /**
  * <p>
@@ -264,6 +279,12 @@ class PatientServiceImplTest {
 
     @Mock
     private PrescriptionService prescriptionService;
+
+    @Mock
+    private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private NotificationApiInterface notificationApiInterface;
 
     @Test
     @DisplayName("GetPatientBasicDetailsWithIdNUll Test")
@@ -523,15 +544,19 @@ class PatientServiceImplTest {
         TestDataProvider.cleanUp();
     }
 
-    //@Test(jdbc call)
+    @Test
     @DisplayName("CreatePatientWithSiteNull Test")
     void createPatientWithSiteNull() {
         //given
+        ReflectionTestUtils.setField(patientService, "enableFhir", true);
         Patient patient = TestDataProvider.getPatient();
         Patient enrollPatient = TestDataProvider.getPatient();
         EnrollmentRequestDTO requestDTO = TestDataProvider.getEnrollmentRequestDto();
-        PatientTracker exisitingPatientTracker = null;
-        Site site = null;
+        requestDTO.setCvdRiskLevel(Constants.CVD_RISK_LEVEL);
+        requestDTO.setPatientStatus(TestDataProvider.getDiagnosisDTO());
+        PatientDiagnosis patientDiagnosis = TestDataProvider.getPatientDiagnosis();
+        BpLog bpLog = TestDataProvider.getBpLog();
+        PatientTracker patientTracker = TestDataProvider.getPatientTracker();
         ResponseEntity<Site> response = new ResponseEntity<>(null, HttpStatus.OK);
         TestDataProvider.init();
         Organization organization = TestDataProvider.getOrganization();
@@ -547,13 +572,105 @@ class PatientServiceImplTest {
                 1L, enrollPatient.getCountryId(), Constants.COUNTRY)).thenReturn(organizationResponse);
         SqlParameterSource in = new MapSqlParameterSource().addValue(Constants.INPUT_ID, patient.getId())
                 .addValue(Constants.INPUT_TENANT_ID, organization.getId());
-        Long virtualId = jdbcCall.executeFunction(Long.class, in);
-
+        MockedConstruction<SimpleJdbcCall> simpleJdbcCallConstructionMock =
+                Mockito.mockConstruction(SimpleJdbcCall.class, (simpleJdbcCall, context) -> {
+                    when(simpleJdbcCall.withFunctionName(Constants.UPDATE_VIRTUAL_ID)).thenReturn(simpleJdbcCall);
+                    when(simpleJdbcCall.executeFunction(eq(Long.class), any(SqlParameterSource.class))).thenReturn(1L);
+                });
+        when(patientTrackerService.addOrUpdatePatientTracker(any(PatientTracker.class))).thenReturn(patientTracker);
+        when(patientTreatmentPlanService.createProvisionalTreatmentPlan(patientTracker, requestDTO.getCvdRiskLevel(),
+                requestDTO.getTenantId())).thenReturn(new ArrayList<>());
         when(adminApiInterface.getSiteById(Constants.AUTH_TOKEN_SUBJECT,
                 1L, enrollPatient.getSiteId())).thenReturn(response);
+        when(diagnosisRepository.findByPatientTrackIdAndIsActiveAndIsDeleted(1l, Constants.BOOLEAN_TRUE,
+                Constants.BOOLEAN_FALSE)).thenReturn(null);
+        when(diagnosisRepository.save(patientDiagnosis)).thenReturn(patientDiagnosis);
+        when(patientMapper.setPatientDiagnosis(requestDTO.getPatientStatus())).thenReturn(patientDiagnosis);
+        when(adminApiInterface.getSiteById(Constants.AUTH_TOKEN_SUBJECT,
+                1L, enrollPatient.getSiteId())).thenReturn(response);
+        when(patientMapper.setBpLog(requestDTO, bpLog)).thenReturn(bpLog);
+        when(bpLogService.addBpLog(bpLog, Constants.BOOLEAN_FALSE)).thenReturn(bpLog);
+        doNothing().when(customizedModulesService).createCustomizedModules(requestDTO.getCustomizedWorkflows(),
+                Constants.WORKFLOW_ENROLLMENT, patientTracker.getId());
+        verify(rabbitTemplate, atMost(1)).convertAndSend(any(Object.class));
+
         //then
-        Assertions.assertThrows(DataNotFoundException.class, () -> patientService.createPatient(requestDTO));
+        EnrollmentResponseDTO enrollmentResponseDTO = patientService.createPatient(requestDTO);
         TestDataProvider.cleanUp();
+        simpleJdbcCallConstructionMock.close();
+        ReflectionTestUtils.setField(patientService, "enableFhir", false);
+        Assertions.assertNotNull(enrollmentResponseDTO);
+    }
+
+    @Test
+    @DisplayName("CreatePatientWithSite Test")
+    void createPatientWithSite() {
+        //given
+        ReflectionTestUtils.setField(patientService, "enableFhir", true);
+        ReflectionTestUtils.setField(patientService, "sendEnrollmentNotification", true);
+        Patient patient = TestDataProvider.getPatient();
+        PatientDetailDTO patientDTO = TestDataProvider.getPatientDetailsDTO();
+        Patient enrollPatient = TestDataProvider.getPatient();
+        enrollPatient.setTenantId(1l);
+        SMSTemplate expectedSmsTemplate = new SMSTemplate();
+        expectedSmsTemplate.setBody("Test body");
+        SmsDTO sms = TestDataProvider.getSmsDTO();
+        sms.setTenantId(1l);
+        List<SmsDTO> smsDTOS = List.of(sms);
+        EnrollmentRequestDTO requestDTO = TestDataProvider.getEnrollmentRequestDto();
+        requestDTO.setCvdRiskLevel(Constants.CVD_RISK_LEVEL);
+        requestDTO.setPatientStatus(TestDataProvider.getDiagnosisDTO());
+        PatientDiagnosis patientDiagnosis = TestDataProvider.getPatientDiagnosis();
+        BpLog bpLog = TestDataProvider.getBpLog();
+        PatientTracker patientTracker = TestDataProvider.getPatientTracker();
+        Site site = TestDataProvider.getSite();
+        ResponseEntity<Site> response = new ResponseEntity<>(site, HttpStatus.OK);
+        TestDataProvider.init();
+        Organization organization = TestDataProvider.getOrganization();
+        ResponseEntity<Organization> organizationResponse = new ResponseEntity<>(organization, HttpStatus.OK);
+        //when
+        when(patientTrackerService.getPatientTrackerById(requestDTO.getPatientTrackId()))
+                .thenReturn(null);
+        when(patientMapper.setPatient(requestDTO)).thenReturn(patient);
+        when(patientRepository.save(enrollPatient)).thenReturn(enrollPatient);
+        TestDataProvider.getStaticMock();
+        SimpleJdbcCall jdbcCall = new SimpleJdbcCall(dataSource).withFunctionName(Constants.UPDATE_VIRTUAL_ID);
+        when(userApiInterface.getOrganizationByFormDataIdAndName(Constants.AUTH_TOKEN_SUBJECT,
+                1L, enrollPatient.getCountryId(), Constants.COUNTRY)).thenReturn(organizationResponse);
+        SqlParameterSource in = new MapSqlParameterSource().addValue(Constants.INPUT_ID, patient.getId())
+                .addValue(Constants.INPUT_TENANT_ID, organization.getId());
+        MockedConstruction<SimpleJdbcCall> simpleJdbcCallConstructionMock =
+                Mockito.mockConstruction(SimpleJdbcCall.class, (simpleJdbcCall, context) -> {
+                    when(simpleJdbcCall.withFunctionName(Constants.UPDATE_VIRTUAL_ID)).thenReturn(simpleJdbcCall);
+                    when(simpleJdbcCall.executeFunction(eq(Long.class), any(SqlParameterSource.class))).thenReturn(1L);
+                });
+        when(patientTrackerService.addOrUpdatePatientTracker(any(PatientTracker.class))).thenReturn(patientTracker);
+        when(patientTreatmentPlanService.createProvisionalTreatmentPlan(patientTracker, requestDTO.getCvdRiskLevel(),
+                requestDTO.getTenantId())).thenReturn(new ArrayList<>());
+        when(adminApiInterface.getSiteById(Constants.AUTH_TOKEN_SUBJECT,
+                1L, enrollPatient.getSiteId())).thenReturn(response);
+        when(patientMapper.setPatientDetailDto(patient)).thenReturn(patientDTO);
+        when(diagnosisRepository.findByPatientTrackIdAndIsActiveAndIsDeleted(1l, Constants.BOOLEAN_TRUE,
+                Constants.BOOLEAN_FALSE)).thenReturn(null);
+        when(notificationApiInterface.getSmsTemplateValues(Constants.AUTH_TOKEN_SUBJECT, 1L,
+                Constants.TEMPLATE_TYPE_ENROLL_PATIENT)).thenReturn(ResponseEntity.ok(expectedSmsTemplate));
+        when(notificationApiInterface.saveOutBoundSms(Constants.AUTH_TOKEN_SUBJECT,
+                1l, smsDTOS)).thenReturn("");
+        when(diagnosisRepository.save(patientDiagnosis)).thenReturn(patientDiagnosis);
+        when(patientMapper.setPatientDiagnosis(requestDTO.getPatientStatus())).thenReturn(patientDiagnosis);
+        when(adminApiInterface.getSiteById(Constants.AUTH_TOKEN_SUBJECT,
+                1L, enrollPatient.getSiteId())).thenReturn(response);
+        when(patientMapper.setBpLog(requestDTO, bpLog)).thenReturn(bpLog);
+        when(bpLogService.addBpLog(bpLog, Constants.BOOLEAN_FALSE)).thenReturn(bpLog);
+        doNothing().when(customizedModulesService).createCustomizedModules(requestDTO.getCustomizedWorkflows(),
+                Constants.WORKFLOW_ENROLLMENT, patientTracker.getId());
+        verify(rabbitTemplate, atMost(1)).convertAndSend(any(Object.class));
+        //then
+        EnrollmentResponseDTO enrollmentResponseDTO = patientService.createPatient(requestDTO);
+        TestDataProvider.cleanUp();
+        simpleJdbcCallConstructionMock.close();
+        ReflectionTestUtils.setField(patientService, "enableFhir", false);
+        Assertions.assertNotNull(enrollmentResponseDTO);
     }
 
     @Test
