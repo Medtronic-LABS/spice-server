@@ -1,5 +1,11 @@
 package com.mdtlabs.coreplatform.common;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.mdtlabs.coreplatform.common.model.dto.spice.CultureDTO;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Comorbidity;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Complaints;
@@ -19,12 +25,6 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.Reason;
 import com.mdtlabs.coreplatform.common.model.entity.spice.RiskAlgorithm;
 import com.mdtlabs.coreplatform.common.model.entity.spice.SideMenu;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Symptom;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * <p>
@@ -552,6 +552,13 @@ public final class Constants {
     public static final String LAT = "lat";
     public static final String LON = "lon";
     public static final String BROWSER = "browser";
+    public static final String SITE_DATA = "Site_Data";
+    public static final String ORGANIZATION_LOGGER = "In OrganizationServiceImpl, setAndSendFhirSiteRequest :: ";
+    public static final String OBJECT_TO_STRING_LOGGER = "ERROR Converting from Object to String :: ";
+    public static final String RABBIT_MQ_LOGGER = "ERROR Connecting to RabbitMQ Queue :: ";
+    public static final String ERROR_LOGGER = "ERROR in setAndSendFhirSiteRequest :: ";
+    public static final String USER_LOGGER = "In UserServiceImpl, setAndSendFhirUserRequest :: ";
+    public static final String FHIR_USER_DATA = "User_Data";
     public static List<Complaints> COMPLAINTS = new ArrayList<>();
     public static List<NutritionLifestyle> NUTRITION_LIFESTYLES = new ArrayList<>();
     public static List<PhysicalExamination> PHYSICAL_EXAMINATIONS = new ArrayList<>();
@@ -574,6 +581,13 @@ public final class Constants {
     public static List<CultureDTO> CULTURE_LIST = new ArrayList<>();
     public static List<FrequencyType> FREQUENCY_TYPE = new ArrayList<>();
     public static final String SPACE_COMMA_SPACE_SPLIT_PATTERN = "\\s*,\\s*";
+    public static final String SHA_256 = "SHA-256";
+    public static final String NO_SUCH_ALGORITHM = "No such algorithm Exception occurred : \n";
+    public static final String TYPE_NOT_NULL_MESSAGE = "Type should not be null";
+    public static final String ENROLLMENT_DATA = "Enrollment_Data";
+    public static final String DEDUPLICATION_ID = "deduplicationId";
+    public static final String BODY = "body";
+    public static final String ASSESSMENT_DATA = "Assessment_Data";
 
     private Constants() {
     }

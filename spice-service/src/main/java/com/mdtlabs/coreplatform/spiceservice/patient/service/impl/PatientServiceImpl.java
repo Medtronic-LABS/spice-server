@@ -1,5 +1,7 @@
 package com.mdtlabs.coreplatform.spiceservice.patient.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.ErrorConstants;
 import com.mdtlabs.coreplatform.common.FieldConstants;
@@ -12,6 +14,7 @@ import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
 import com.mdtlabs.coreplatform.common.exception.Validation;
 import com.mdtlabs.coreplatform.common.logger.Logger;
 import com.mdtlabs.coreplatform.common.model.dto.SmsDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirEnrollmentRequestDto;
 import com.mdtlabs.coreplatform.common.model.dto.spice.BpLogDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.DiagnosisDTO;
@@ -48,6 +51,7 @@ import com.mdtlabs.coreplatform.common.service.impl.GenericServiceImpl;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
 import com.mdtlabs.coreplatform.common.util.ConversionUtil;
 import com.mdtlabs.coreplatform.common.util.StringUtil;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.spiceservice.AdminApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.NotificationApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.UserApiInterface;
@@ -80,6 +84,8 @@ import com.mdtlabs.coreplatform.spiceservice.screeninglog.service.ScreeningLogSe
 import org.apache.commons.lang.StringUtils;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -198,8 +204,20 @@ public class PatientServiceImpl implements PatientService {
     @Autowired
     private UserApiInterface userApiInterface;
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     @Value("${app.send-enrollment-notification}")
     private boolean sendEnrollmentNotification;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key.name}")
+    private String routingKey;
+
+    @Value("${app.enableFhir}")
+    private boolean enableFhir;
 
     /**
      * {@inheritDoc}
@@ -244,14 +262,46 @@ public class PatientServiceImpl implements PatientService {
         createMentalHealth(enrollmentRequest, patientTracker, response);
         PatientDiagnosis patientDiagnosis = createPatientDiagnosis(enrollmentRequest, patientTracker);
         setRiskLevelForEnrollment(enrollmentRequest, patientTracker, patientDiagnosis);
-        createAssessment(enrollmentRequest, response, patientTracker);
+        FhirEnrollmentRequestDto fhirEnrollmentRequestDto = new FhirEnrollmentRequestDto();
+        createAssessment(enrollmentRequest, response, patientTracker,fhirEnrollmentRequestDto);
         customizedModulesService.createCustomizedModules(enrollmentRequest.getCustomizedWorkflows(),
-                Constants.WORKFLOW_ENROLLMENT, patientTracker.getId());
-        if (site != null) {
-            constructEnrollmentResponse(response, enrolledPatient, site, patientTracker);
-        }
+         Constants.WORKFLOW_ENROLLMENT, patientTracker.getId());
+
+        if (site != null) {constructEnrollmentResponse(response, enrolledPatient, site, patientTracker);}
         sendEnrollmentNotification(enrolledPatient, site);
+        if(enableFhir) {
+            try {
+                setAndSendFhirEnrollmentRequest(fhirEnrollmentRequestDto, patient, patientTracker);
+            } catch (JsonProcessingException jsonException) {
+                Logger.logError("ERROR Converting from Object to String",jsonException);
+            } catch (AmqpException amqpException) {
+                Logger.logError("ERROR Connecting to RabbitMQ Queue", amqpException);
+            } catch (Exception e){
+                Logger.logError("ERROR in setAndSendFhirEnrollmentRequest");
+            }
+
+        }
         return response;
+    }
+
+    private void setAndSendFhirEnrollmentRequest(FhirEnrollmentRequestDto fhirEnrollmentRequestDto, Patient enrolledPatient, PatientTracker patientTracker) throws AmqpException,JsonProcessingException {
+
+        fhirEnrollmentRequestDto.setPatient(enrolledPatient);
+        fhirEnrollmentRequestDto.setCreatedAt(enrolledPatient.getCreatedAt());
+        fhirEnrollmentRequestDto.setUpdatedAt(enrolledPatient.getUpdatedAt());
+        fhirEnrollmentRequestDto.setType(Constants.ENROLLMENT_DATA);
+        fhirEnrollmentRequestDto.setPatientTrackId(patientTracker.getId());
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonString = objectMapper.writeValueAsString(fhirEnrollmentRequestDto);
+        String deduplicationId = UniqueCodeGenerator.generateUniqueCode(jsonString);
+
+        Map<String, Object> message = new HashMap<>();
+        message.put(Constants.DEDUPLICATION_ID, deduplicationId);
+        message.put(Constants.BODY,jsonString);
+        String jsonMessage = objectMapper.writeValueAsString(message);
+        Logger.logDebug("In PatientServiceImpl, setAndSendFhirEnrollmentRequest :: "+ jsonMessage);
+        rabbitTemplate.convertAndSend(exchange,routingKey,jsonMessage);
+
     }
 
     /**
@@ -365,13 +415,35 @@ public class PatientServiceImpl implements PatientService {
      * {@inheritDoc}
      */
     private void createAssessment(EnrollmentRequestDTO enrollmentRequest,
-                                  EnrollmentResponseDTO enrollmentResponse, PatientTracker patientTracker) {
+                                  EnrollmentResponseDTO enrollmentResponse, PatientTracker patientTracker,FhirEnrollmentRequestDto fhirEnrollmentRequestDto) {
         BpLog bpLog = createBpLog(enrollmentRequest, enrollmentResponse, patientTracker);
         GlucoseLog glucoseLog = createGlucoseLog(enrollmentRequest, enrollmentResponse, patientTracker);
         Long glucoseId = Objects.isNull(glucoseLog) ? null : glucoseLog.getId();
         patientAssessmentRepository.save(new PatientAssessment(bpLog.getId(),
                 glucoseId, Constants.ENROLLMENT, enrollmentRequest.getTenantId(), patientTracker.getId()));
+        validatingFhirEnrollmentData(fhirEnrollmentRequestDto, glucoseLog, bpLog);
     }
+    /**
+     * <p>
+     * Validates FhirEnrollment data from the request
+     * </p>
+     *
+     * @param fhirEnrollmentRequestDto - enrollment request data
+     * @param glucoseLog - patient bgLog details.
+     * @param bpLog - patient bpLog details
+     */
+
+    private void validatingFhirEnrollmentData(FhirEnrollmentRequestDto fhirEnrollmentRequestDto, GlucoseLog glucoseLog, BpLog bpLog) {
+        if(null!=fhirEnrollmentRequestDto) {
+            fhirEnrollmentRequestDto.setGlucoseLog(glucoseLog);
+            fhirEnrollmentRequestDto.setBpLog(bpLog);
+            if (null!=glucoseLog) {
+                fhirEnrollmentRequestDto.setUpdatedBy(glucoseLog.getUpdatedBy());
+                fhirEnrollmentRequestDto.setCreatedBy(glucoseLog.getCreatedBy());
+            }
+        }
+    }
+
 
     /**
      * <p>

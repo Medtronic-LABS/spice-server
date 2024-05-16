@@ -1,8 +1,12 @@
 package com.mdtlabs.coreplatform.userservice.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
@@ -27,13 +31,17 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.internal.InheritingConfiguration;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountOrganizationDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountWorkflowDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
@@ -46,12 +54,15 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.SiteOrganizationDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.SiteUserDTO;
 import com.mdtlabs.coreplatform.common.model.entity.Account;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
+import com.mdtlabs.coreplatform.common.model.entity.County;
 import com.mdtlabs.coreplatform.common.model.entity.Culture;
 import com.mdtlabs.coreplatform.common.model.entity.Operatingunit;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
+import com.mdtlabs.coreplatform.common.model.entity.Subcounty;
 import com.mdtlabs.coreplatform.common.model.entity.User;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.userservice.AdminApiInterface;
 import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
 import com.mdtlabs.coreplatform.userservice.repository.OrganizationRepository;
@@ -93,6 +104,12 @@ class OrganizationServiceTest {
 
     @Mock
     private RedisTemplate<String, List<Organization>> redisTemplate;
+
+    @Mock
+    private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     private ModelMapper modelMapper;
 
@@ -421,7 +438,14 @@ class OrganizationServiceTest {
         SiteDTO siteDTO = TestDataProvider.getSiteDTO();
         User user = TestDataProvider.getUser();
         TestDataProvider.init();
-
+        ReflectionTestUtils.setField(organizationService, "enableFhir", true);
+        ReflectionTestUtils.setField(organizationService, "exchange", "exchange");
+        ReflectionTestUtils.setField(organizationService, "routingKey", "key");
+        Country country = TestDataProvider.getCountry();
+        Subcounty subCounty = TestDataProvider.getSubcounty();
+        County county = TestDataProvider.getCounty();
+        FhirSiteRequestDTO siteRequestDTO = TestDataProvider.getFhirSiteRequestDTO();
+        String jsonMessage = siteRequestDTO.toString();
         //when
         TestDataProvider.getStaticMock();
         when(modelMapper.getConfiguration()).thenReturn(new InheritingConfiguration());
@@ -429,15 +453,30 @@ class OrganizationServiceTest {
         when(modelMapper.map(siteOrganizationDTO, SiteDTO.class)).thenReturn(siteDTO);
         when(modelMapper.map(siteOrganizationDTO, Site.class)).thenReturn(site);
         when(adminApiInterface.createSite(TestConstants.TOKEN, TestConstants.ONE, siteDTO)).thenReturn(site);
+        when(adminApiInterface.getCountry(TestConstants.TOKEN,
+                TestConstants.ONE, TestConstants.ONE)).thenReturn(country);
+        when(adminApiInterface.getCountyById(TestConstants.TOKEN,
+                TestConstants.ONE, TestConstants.ONE)).thenReturn(county);
+        when(adminApiInterface.getSubCountyById(TestConstants.TOKEN,
+                TestConstants.ONE, TestConstants.ONE)).thenReturn(subCounty);
         doNothing().when(userService).validateUsers(newUserNames);
         when(roleService.getRoleByName(role.getName())).thenReturn(role);
         when(organizationRepository.save(siteOrganization)).thenReturn(siteOrganization);
+        MockedConstruction<ObjectMapper> objectMapperMockedConstruction =
+                Mockito.mockConstruction(ObjectMapper.class, (objectMapper, context) -> {
+                    when(objectMapper.writeValueAsString(any(FhirSiteRequestDTO.class))).thenReturn(jsonMessage);
+                });
+        MockedStatic<UniqueCodeGenerator> uniqueCodeGeneratorMockedStatic = Mockito.mockStatic(UniqueCodeGenerator.class);
+        uniqueCodeGeneratorMockedStatic.when(() -> UniqueCodeGenerator.generateUniqueCode(jsonMessage)).thenReturn(Constants.DEDUPLICATION_ID);
+        doNothing().when(rabbitTemplate).convertAndSend("exchange", "keyName", jsonMessage);
 
         //then
         organizationService.createSite(siteOrganizationDTO);
         Assertions.assertNotNull(siteOrganization);
         verify(organizationRepository, atLeastOnce()).save(siteOrganization);
         TestDataProvider.cleanUp();
+        objectMapperMockedConstruction.close();
+        uniqueCodeGeneratorMockedStatic.close();
     }
 
 
