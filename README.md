@@ -377,6 +377,9 @@ Access the Swagger UI documentation in the project using the following URL.
 
 http://localhost:8762/webjars/swagger-ui/index.html?configUrl=/v3/api-docs/swagger-config
 
+### Multilingual Capability:
+
+SPICE now supports multi-language translation for the user interface! This means you can experience SPICE in your preferred language, making it easier than ever to navigate and use the app.
 > Note:
 The credentials displayed in the tables are for demonstration purposes only and should not be
 used in a production environment. If you need to remove, modify, or add new user credentials,
