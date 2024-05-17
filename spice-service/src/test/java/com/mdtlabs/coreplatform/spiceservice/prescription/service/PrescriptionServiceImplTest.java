@@ -119,6 +119,9 @@ public class PrescriptionServiceImplTest {
     @Mock
     private AmazonS3 s3Client;
 
+    @Mock
+    private Path filePath;
+
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(prescriptionService, "targetPath", Paths.get("/Prescription_Signatures/"));    }
@@ -701,5 +704,26 @@ public class PrescriptionServiceImplTest {
         String response = prescriptionService.uploadSignature(file, 1L, 1L);
         Assertions.assertNotNull(response);
         Assertions.assertEquals(location, response);
+    }
+
+    @Test
+    void setTargetDirectoryTest() {
+        //given
+        String targetPath = null;
+        //then
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> prescriptionService.setTargetDirectory(targetPath));
+
+        //given
+        String file = "";
+        //then
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> prescriptionService.setTargetDirectory(targetPath));
+
+        //given
+        String path = "/Prescription_Signatures/";
+        //then
+        prescriptionService.setTargetDirectory(path);
+        Assertions.assertNotNull(path);
     }
 }

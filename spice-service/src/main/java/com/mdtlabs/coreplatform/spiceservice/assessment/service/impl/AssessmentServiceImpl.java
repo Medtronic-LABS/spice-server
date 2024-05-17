@@ -177,6 +177,11 @@ public class AssessmentServiceImpl implements AssessmentService {
         PatientAssessment assessmentLog = patientAssessmentRepository.save(new PatientAssessment(bpLog.getId(), glucoseId,
                 Constants.ASSESSMENT, assessmentRequest.getTenantId(), assessmentRequest.getPatientTrackId()));
         Long assessmentLogId = assessmentLog.getId();
+        if (Constants.HIGH.equals(riskLevel)) {
+            addRedRiskNotification(patientTracker, assessmentRequest.getBpLog().getId(), glucoseId, assessmentLogId);
+        }
+        createSymptomsAndCompliance(assessmentRequest, bpLog.getId(), glucoseId, assessmentLogId, assessmentResponse);
+        patientTrackerService.addOrUpdatePatientTracker(patientTracker);
         if(enableFhir) {
             try {
                 setAndSendFhirAssessmentRequest(glucoseLog, bpLog, assessmentLog, patientTracker);
@@ -187,11 +192,6 @@ public class AssessmentServiceImpl implements AssessmentService {
                 throw new AmqpException(amqpException);
             }
         }
-        if (Constants.HIGH.equals(riskLevel)) {
-            addRedRiskNotification(patientTracker, assessmentRequest.getBpLog().getId(), glucoseId, assessmentLogId);
-        }
-        createSymptomsAndCompliance(assessmentRequest, bpLog.getId(), glucoseId, assessmentLogId, assessmentResponse);
-        patientTrackerService.addOrUpdatePatientTracker(patientTracker);
         constructPatientResponse(assessmentRequest, assessmentResponse, patientTracker);
         return assessmentResponse;
     }
@@ -206,7 +206,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         fhirAssessmentRequestDto.setCreatedBy(assessmentLog.getCreatedBy());
         fhirAssessmentRequestDto.setUpdatedBy(assessmentLog.getUpdatedBy());
         fhirAssessmentRequestDto.setPatientTrackId(assessmentLog.getPatientTrackId());
-        fhirAssessmentRequestDto.setPatientTracker(patientTrackerService.addOrUpdatePatientTracker(patientTracker));
+        fhirAssessmentRequestDto.setPatientTracker(patientTracker);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonString = objectMapper.writeValueAsString(fhirAssessmentRequestDto);
