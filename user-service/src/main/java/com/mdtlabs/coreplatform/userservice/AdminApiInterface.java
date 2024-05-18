@@ -1,16 +1,21 @@
 package com.mdtlabs.coreplatform.userservice;
 
+import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountWorkflowDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CountryDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.OperatingUnitDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.SiteDTO;
 import com.mdtlabs.coreplatform.common.model.entity.Account;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
+import com.mdtlabs.coreplatform.common.model.entity.County;
 import com.mdtlabs.coreplatform.common.model.entity.Operatingunit;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
+import com.mdtlabs.coreplatform.common.model.entity.Subcounty;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -109,4 +114,41 @@ public interface AdminApiInterface {
     @PostMapping("/site/create")
     Site createSite(@RequestHeader("Authorization") String token, @RequestHeader("TenantId") Long tenantId,
                     @RequestBody SiteDTO siteDto);
+
+    /**
+     * <p>
+     * This method is to get the country based on given ID.
+     * </p>
+     *
+     * @param countryId The ID for which the country is being searched is given
+     * @return {@link Country} Returns a success message and status with the retrieved country
+     */
+    @GetMapping("/data/get-country/{id}")
+    Country getCountry(@RequestHeader("Authorization") String token,
+                       @RequestHeader("TenantId") Long tenantId, @PathVariable(value = Constants.ID) long countryId);
+
+    /**
+     * <p>
+     * This method is to get the county based on given ID.
+     * </p>
+     *
+     * @param id The ID for which the county is being searched is given
+     * @return {@link County} Returns a success message with the retrieved county
+     */
+    @GetMapping("/data/county/get/{id}")
+    County getCountyById(@RequestHeader("Authorization") String token,
+                         @RequestHeader("TenantId") Long tenantId, @PathVariable(value = Constants.ID) long id);
+
+    /**
+     * <p>
+     * This method is to get the sub county based on given ID.
+     * </p>
+     *
+     * @param subCountyId The ID for which the sub county is being searched is given
+     * @return {@link Subcounty} Returns a success message and status with the retrieved sub county
+     */
+    @GetMapping("/data/subcounty/{id}")
+    Subcounty getSubCountyById(@RequestHeader("Authorization") String token,
+                                      @RequestHeader("TenantId") Long tenantId,
+                                      @PathVariable(value = Constants.ID) long subCountyId);
 }

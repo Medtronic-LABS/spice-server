@@ -1,5 +1,7 @@
 package com.mdtlabs.coreplatform.spiceservice.assessment.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdtlabs.coreplatform.AuthenticationFilter;
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.UnitConstants;
@@ -9,6 +11,7 @@ import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
 import com.mdtlabs.coreplatform.common.logger.Logger;
 import com.mdtlabs.coreplatform.common.model.dto.SmsDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirAssessmentRequestDto;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AssessmentDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AssessmentResponseDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.BpLogDTO;
@@ -31,6 +34,7 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.PatientTreatmentPlan;
 import com.mdtlabs.coreplatform.common.model.entity.spice.RedRiskNotification;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
 import com.mdtlabs.coreplatform.common.util.ConversionUtil;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.spiceservice.AdminApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.NotificationApiInterface;
 import com.mdtlabs.coreplatform.spiceservice.UserApiInterface;
@@ -49,7 +53,10 @@ import com.mdtlabs.coreplatform.spiceservice.patientsymptom.service.PatientSympt
 import com.mdtlabs.coreplatform.spiceservice.patienttracker.service.PatientTrackerService;
 import com.mdtlabs.coreplatform.spiceservice.patienttreatmentplan.service.PatientTreatmentPlanService;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -128,6 +135,17 @@ public class AssessmentServiceImpl implements AssessmentService {
     @Autowired
     private UserApiInterface userApiInterface;
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key.name}")
+    private String routingKey;
+
+    @Value("${app.enableFhir}")
+    private boolean enableFhir;
     /**
      * {@inheritDoc}
      */
@@ -142,21 +160,11 @@ public class AssessmentServiceImpl implements AssessmentService {
         }
         AssessmentResponseDTO assessmentResponse = new AssessmentResponseDTO();
         PatientTracker patientTracker = patientTrackerService.getPatientTrackerById(assessmentRequest.getPatientTrackId());
-        createAssessment(assessmentRequest, patientTracker, assessmentResponse);
         customizedModulesService.createCustomizedModules(assessmentRequest.getCustomizedWorkflows(),
                 Constants.WORKFLOW_ASSESSMENT, patientTracker.getId());
         createMentalHealth(assessmentRequest, patientTracker, assessmentResponse);
         setPatientTracker(assessmentRequest, patientTracker);
-        patientTrackerService.addOrUpdatePatientTracker(patientTracker);
-        constructPatientResponse(assessmentRequest, assessmentResponse, patientTracker);
-        return assessmentResponse;
-    }
 
-    /**
-     * {@inheritDoc}
-     */
-    private void createAssessment(AssessmentDTO assessmentRequest, PatientTracker patientTracker,
-                                  AssessmentResponseDTO assessmentResponse) {
         String riskLevel = calculateRiskLevel(assessmentRequest.getBpLog(), assessmentRequest.getGlucoseLog(),
                 assessmentRequest.getSymptoms(), patientTracker);
         if (StringUtils.isBlank(riskLevel)) {
@@ -164,13 +172,52 @@ public class AssessmentServiceImpl implements AssessmentService {
             patientTracker.setRiskLevel(riskLevel);
         }
         BpLog bpLog = createBpLog(assessmentRequest, assessmentResponse, riskLevel);
-        Long glucoseId = createGlucoseLog(assessmentRequest, assessmentResponse);
-        Long assessmentLogId = patientAssessmentRepository.save(new PatientAssessment(bpLog.getId(), glucoseId,
-                Constants.ASSESSMENT, assessmentRequest.getTenantId(), assessmentRequest.getPatientTrackId())).getId();
+        GlucoseLog glucoseLog = createGlucoseLog(assessmentRequest, assessmentResponse);
+        Long glucoseId = glucoseLog.getId();
+        PatientAssessment assessmentLog = patientAssessmentRepository.save(new PatientAssessment(bpLog.getId(), glucoseId,
+                Constants.ASSESSMENT, assessmentRequest.getTenantId(), assessmentRequest.getPatientTrackId()));
+        Long assessmentLogId = assessmentLog.getId();
         if (Constants.HIGH.equals(riskLevel)) {
             addRedRiskNotification(patientTracker, assessmentRequest.getBpLog().getId(), glucoseId, assessmentLogId);
         }
         createSymptomsAndCompliance(assessmentRequest, bpLog.getId(), glucoseId, assessmentLogId, assessmentResponse);
+        patientTrackerService.addOrUpdatePatientTracker(patientTracker);
+        if(enableFhir) {
+            try {
+                setAndSendFhirAssessmentRequest(glucoseLog, bpLog, assessmentLog, patientTracker);
+            } catch (JsonProcessingException e) {
+                Logger.logError("ERROR Converting from Object to String");
+            } catch (AmqpException amqpException) {
+                Logger.logError("ERROR Connecting to RabbitMQ Queue");
+                throw new AmqpException(amqpException);
+            }
+        }
+        constructPatientResponse(assessmentRequest, assessmentResponse, patientTracker);
+        return assessmentResponse;
+    }
+
+    private void setAndSendFhirAssessmentRequest(GlucoseLog glucoseLog, BpLog bpLog,
+                                                 PatientAssessment assessmentLog, PatientTracker patientTracker) throws JsonProcessingException {
+        FhirAssessmentRequestDto fhirAssessmentRequestDto = new FhirAssessmentRequestDto();
+        fhirAssessmentRequestDto.setGlucoseLog(glucoseLog);
+        fhirAssessmentRequestDto.setBpLog(bpLog);
+        fhirAssessmentRequestDto.setType(Constants.ASSESSMENT_DATA);
+        fhirAssessmentRequestDto.setPatientAssessment(assessmentLog);
+        fhirAssessmentRequestDto.setCreatedBy(assessmentLog.getCreatedBy());
+        fhirAssessmentRequestDto.setUpdatedBy(assessmentLog.getUpdatedBy());
+        fhirAssessmentRequestDto.setPatientTrackId(assessmentLog.getPatientTrackId());
+        fhirAssessmentRequestDto.setPatientTracker(patientTracker);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonString = objectMapper.writeValueAsString(fhirAssessmentRequestDto);
+        String deduplicationId = UniqueCodeGenerator.generateUniqueCode(jsonString);
+
+        Map<String, Object> message = new HashMap<>();
+        message.put(Constants.DEDUPLICATION_ID, deduplicationId);
+        message.put(Constants.BODY,jsonString);
+        String jsonMessage = objectMapper.writeValueAsString(message);
+        Logger.logDebug("In AssessmentServiceImpl, setAndSendFhirAssessmentRequest :: "+ jsonMessage);
+        rabbitTemplate.convertAndSend(exchange,routingKey,jsonMessage);
     }
 
     /**
@@ -308,17 +355,16 @@ public class AssessmentServiceImpl implements AssessmentService {
      * @return {@link Long} The method is returning a Long value, which is the ID of the glucose log created. If no
      * glucose log was created, the method returns null is returned
      */
-    private Long createGlucoseLog(AssessmentDTO assessmentRequest, AssessmentResponseDTO response) {
+    private GlucoseLog createGlucoseLog(AssessmentDTO assessmentRequest, AssessmentResponseDTO response) {
         Logger.logInfo("In AssessmentServiceImpl, constructing glucose log information");
-        Long glucoseId = null;
+        GlucoseLog glucoseLog =new GlucoseLog();
         if (CommonUtil.isGlucoseLogGiven(assessmentRequest.getGlucoseLog())) {
-            GlucoseLog glucoseLog = constructGlucoseLog(assessmentRequest);
+             glucoseLog = constructGlucoseLog(assessmentRequest);
             glucoseLog = glucoseLogService.addGlucoseLog(glucoseLog, Constants.BOOLEAN_FALSE);
             response.setGlucoseLog(new GlucoseLogDTO(glucoseLog.getGlucoseType(), glucoseLog.getGlucoseValue(),
                     glucoseLog.getGlucoseUnit()));
-            glucoseId = glucoseLog.getId();
         }
-        return glucoseId;
+        return glucoseLog;
     }
 
     /**

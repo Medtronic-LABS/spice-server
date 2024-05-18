@@ -13,6 +13,8 @@ import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
 import com.mdtlabs.coreplatform.common.logger.Logger;
 import com.mdtlabs.coreplatform.common.model.dto.EmailDTO;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirUserRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CultureRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.OutBoundEmailDTO;
@@ -27,24 +29,31 @@ import com.mdtlabs.coreplatform.common.model.entity.EmailTemplate;
 import com.mdtlabs.coreplatform.common.model.entity.EmailTemplateValue;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
+import com.mdtlabs.coreplatform.common.model.entity.Site;
 import com.mdtlabs.coreplatform.common.model.entity.User;
 import com.mdtlabs.coreplatform.common.service.UserTokenService;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
 import com.mdtlabs.coreplatform.common.util.DateUtil;
 import com.mdtlabs.coreplatform.common.util.Pagination;
 import com.mdtlabs.coreplatform.common.util.StringUtil;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.userservice.NotificationApiInterface;
 import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
 import com.mdtlabs.coreplatform.userservice.repository.UserRepository;
 import com.mdtlabs.coreplatform.userservice.service.OrganizationService;
 import com.mdtlabs.coreplatform.userservice.service.RoleService;
 import com.mdtlabs.coreplatform.userservice.service.UserService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -112,6 +121,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Autowired
     private UserTokenService userTokenService;
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     @Value("${app.email-app-url}")
     private String appUrl;
 
@@ -139,6 +151,15 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Value("${app.reset-password-time-limit-in-minutes}")
     private int resetPasswordTimeLimitInMinutes;
 
+    @Value("${app.enableFhir}")
+    private boolean enableFhir;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key.name}")
+    private String routingKey;
+
     /**
      * {@inheritDoc}
      */
@@ -152,6 +173,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 user.setForgetPasswordCount(Constants.ZERO);
                 updatedUser = userRepository.save(user);
                 forgotPassword(updatedUser.getUsername(), updatedUser, Boolean.TRUE, Constants.SPICE);
+                if (enableFhir) {
+                    setAndSendUserRequest(List.of(updatedUser));
+                }
             } else {
                 updatedUser = userRepository.save(user);
             }
@@ -666,11 +690,45 @@ public class UserServiceImpl implements UserService, UserDetailsService {
      */
     public void addUsers(List<User> users, List<String> newUsernames) {
         List<User> userResponse = userRepository.saveAll(users);
+        if (enableFhir) {
+            setAndSendUserRequest(userResponse);
+        }
         for (User user : userResponse) {
             if (!Objects.isNull(newUsernames) && newUsernames.contains(user.getUsername())) {
                 forgotPassword(user.getUsername(), user, Boolean.TRUE, Constants.SPICE);
             }
         }
+    }
+
+    /**
+     * set values to FhirSiteRequest and send to rabbitmq server.
+     *
+     * @param userResponse list of users.
+     *
+     */
+    private void setAndSendUserRequest(List<User> userResponse) {
+        try {
+            FhirUserRequestDTO userRequestDTO = new FhirUserRequestDTO();
+            userRequestDTO.setUsers(userResponse);
+            userRequestDTO.setType(Constants.FHIR_USER_DATA);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(userRequestDTO);
+            String deduplicationId = UniqueCodeGenerator.generateUniqueCode(jsonString);
+            Map<String, Object> message = new HashMap<>();
+            message.put(Constants.DEDUPLICATION_ID, deduplicationId);
+            message.put(Constants.BODY,jsonString);
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            Logger.logDebug(Constants.USER_LOGGER + jsonMessage);
+            rabbitTemplate.convertAndSend(exchange,routingKey,jsonMessage);
+        } catch (JsonProcessingException jsonException) {
+            Logger.logError(Constants.OBJECT_TO_STRING_LOGGER ,jsonException);
+        } catch (AmqpException amqpException) {
+            Logger.logError(Constants.RABBIT_MQ_LOGGER, amqpException);
+        } catch (Exception e){
+            System.out.println(e);
+            Logger.logError(Constants.ERROR_LOGGER + e);
+        }
+
     }
 
     /**

@@ -121,9 +121,9 @@ class DataControllerTest {
         when(dataService.getCountyById(TestConstants.ONE)).thenReturn(county);
 
         //then
-        SuccessResponse<County> actualCounty = dataController.getCountyById(TestConstants.ONE);
+        County actualCounty = dataController.getCountyById(TestConstants.ONE);
         assertNotNull(actualCounty);
-        assertEquals(HttpStatus.OK, actualCounty.getStatusCode());
+        assertEquals(county, actualCounty);
     }
 
     @Test
@@ -229,9 +229,9 @@ class DataControllerTest {
         when(dataService.getSubCountyById(TestConstants.ONE)).thenReturn(subcounty);
 
         //then
-        SuccessResponse<Subcounty> actualSubCounty = dataController.getSubCountyById(TestConstants.ONE);
+        Subcounty actualSubCounty = dataController.getSubCountyById(TestConstants.ONE);
         assertNotNull(actualSubCounty);
-        assertEquals(HttpStatus.OK, actualSubCounty.getStatusCode());
+        assertEquals(subcounty, actualSubCounty);
     }
 
     @Test

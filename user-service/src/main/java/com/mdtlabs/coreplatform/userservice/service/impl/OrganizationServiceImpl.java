@@ -13,15 +13,22 @@ import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.FieldConstants;
 import com.mdtlabs.coreplatform.common.contexts.UserSelectedTenantContextHolder;
 import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
+import com.mdtlabs.coreplatform.common.logger.Logger;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountOrganizationDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountWorkflowDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
@@ -35,13 +42,16 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.SiteUserDTO;
 import com.mdtlabs.coreplatform.common.model.entity.Account;
 import com.mdtlabs.coreplatform.common.model.entity.BaseEntity;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
+import com.mdtlabs.coreplatform.common.model.entity.County;
 import com.mdtlabs.coreplatform.common.model.entity.Culture;
 import com.mdtlabs.coreplatform.common.model.entity.Operatingunit;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
+import com.mdtlabs.coreplatform.common.model.entity.Subcounty;
 import com.mdtlabs.coreplatform.common.model.entity.User;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.userservice.AdminApiInterface;
 import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
 import com.mdtlabs.coreplatform.userservice.repository.OrganizationRepository;
@@ -79,6 +89,18 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     @Autowired
     private RedisTemplate<String, List<Organization>> redisTemplate;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Value("${app.enableFhir}")
+    private boolean enableFhir;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key.name}")
+    private String routingKey;
 
     /**
      * {@inheritDoc}
@@ -298,6 +320,9 @@ public class OrganizationServiceImpl implements OrganizationService {
         siteDto.setTenantId(organization.getId());
         Site siteResponse = adminApiInterface.createSite(CommonUtil.getAuthToken(),
                 UserSelectedTenantContextHolder.get(), siteDto);
+        if(enableFhir) {
+            setAndSendSiteRequest(siteResponse);
+        }
         if (!Objects.isNull(siteResponse)) {
             organization.setFormDataId(siteResponse.getId());
             Map<Long, Boolean> redRisks = new HashMap<>();
@@ -312,6 +337,71 @@ public class OrganizationServiceImpl implements OrganizationService {
                 null, organization, Constants.BOOLEAN_TRUE, redRisks);
             addOrganization(organization);
         }
+    }
+
+    /**
+     * set values to FhirSiteRequest and send to rabbitmq server.
+     *
+     * @param siteResponse
+     *
+     */
+    private void setAndSendSiteRequest(Site siteResponse) {
+        try {
+            FhirSiteRequestDTO siteRequestDTO = new FhirSiteRequestDTO();
+            mapSiteDetails(siteRequestDTO, siteResponse);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(siteRequestDTO);
+            String deduplicationId = UniqueCodeGenerator.generateUniqueCode(jsonString);
+            Map<String, Object> message = new HashMap<>();
+            message.put(Constants.DEDUPLICATION_ID, deduplicationId);
+            message.put(Constants.BODY,jsonString);
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            Logger.logDebug(Constants.ORGANIZATION_LOGGER + jsonMessage);
+            rabbitTemplate.convertAndSend(exchange,routingKey,jsonMessage);
+        } catch (JsonProcessingException jsonException) {
+            Logger.logError(Constants.OBJECT_TO_STRING_LOGGER + jsonException);
+        } catch (AmqpException amqpException) {
+            Logger.logError(Constants.RABBIT_MQ_LOGGER + amqpException);
+        } catch (Exception e){
+            Logger.logError(Constants.ERROR_LOGGER + e);
+        }
+
+    }
+
+    /**
+     * map the site Fields to FhirRequestDTO
+     *
+     * @param siteRequestDTO
+     * @param siteResponse
+     */
+    private void mapSiteDetails(FhirSiteRequestDTO siteRequestDTO, Site siteResponse) {
+        siteRequestDTO.setType(Constants.SITE_DATA);
+        siteRequestDTO.setId(siteResponse.getId());
+        siteRequestDTO.setName(siteResponse.getName());
+        siteRequestDTO.setCountryId(siteResponse.getCountryId());
+        siteRequestDTO.setSiteType(siteResponse.getSiteType());
+        siteRequestDTO.setPhoneNumber(siteResponse.getPhoneNumber());
+        siteRequestDTO.setCity(siteResponse.getCity());
+        siteRequestDTO.setAddressType(siteResponse.getAddressType());
+        siteRequestDTO.setAddressUse(siteResponse.getAddressUse());
+        siteRequestDTO.setPostalCode(siteResponse.getPostalCode());
+        siteRequestDTO.setLongitude(siteResponse.getLongitude());
+        siteRequestDTO.setLatitude(siteResponse.getLatitude());
+        siteRequestDTO.setCountyId(siteResponse.getCountyId());
+        siteRequestDTO.setAddress1(siteResponse.getAddress1());
+        siteRequestDTO.setAddress2(siteResponse.getAddress2());
+        siteRequestDTO.setWorkingHours(siteResponse.getWorkingHours());
+        siteRequestDTO.setCountyId(siteResponse.getCountyId());
+        siteRequestDTO.setActive(siteResponse.isActive());
+        Country country = adminApiInterface.getCountry(CommonUtil.getAuthToken(),
+                UserSelectedTenantContextHolder.get(), siteResponse.getCountryId());
+        County county = adminApiInterface.getCountyById(CommonUtil.getAuthToken(),
+                UserSelectedTenantContextHolder.get(), siteResponse.getCountyId());
+        siteRequestDTO.setCountryName(country.getName());
+        siteRequestDTO.setCountyName(county.getName());
+        Subcounty subcounty = adminApiInterface.getSubCountyById(CommonUtil.getAuthToken(),
+                UserSelectedTenantContextHolder.get(), siteResponse.getSubCountyId());
+        siteRequestDTO.setSubCountyName(subcounty.getName());
     }
 
     /**

@@ -106,12 +106,12 @@ public class DataController {
      * </p>
      *
      * @param id The ID for which the county is being searched is given
-     * @return {@link SuccessResponse<County>} Returns a success message and status with the retrieved county
+     * @return {@link County} Returns a success message and status with the retrieved county
      */
     @GetMapping("/county/get/{id}")
-    public SuccessResponse<County> getCountyById(@PathVariable(value = Constants.ID) long id) {
+    public County getCountyById(@PathVariable(value = Constants.ID) long id) {
         Logger.logInfo("Get a county by ID");
-        return new SuccessResponse<>(SuccessCode.GET_COUNTY, dataService.getCountyById(id), HttpStatus.OK);
+        return dataService.getCountyById(id);
     }
 
     /**
@@ -216,13 +216,12 @@ public class DataController {
      * </p>
      *
      * @param subCountyId The ID for which the sub county is being searched is given
-     * @return {@link SuccessResponse<Subcounty>} Returns a success message and status with the retrieved sub county
+     * @return {@link Subcounty} Returns a success message and status with the retrieved sub county
      */
     @GetMapping("/subcounty/{id}")
-    public SuccessResponse<Subcounty> getSubCountyById(@PathVariable(value = Constants.ID) long subCountyId) {
+    public Subcounty getSubCountyById(@PathVariable(value = Constants.ID) long subCountyId) {
         Logger.logInfo("Getting a list of County based on Country");
-        return new SuccessResponse<>(SuccessCode.GET_SUB_COUNTY, dataService.getSubCountyById(subCountyId),
-                HttpStatus.OK);
+        return dataService.getSubCountyById(subCountyId);
     }
 
 

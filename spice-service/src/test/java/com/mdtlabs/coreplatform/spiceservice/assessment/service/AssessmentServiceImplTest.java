@@ -5,7 +5,10 @@ import com.mdtlabs.coreplatform.common.UnitConstants;
 import com.mdtlabs.coreplatform.common.exception.BadRequestException;
 import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
+import com.mdtlabs.coreplatform.common.logger.Logger;
 import com.mdtlabs.coreplatform.common.model.dto.SmsDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirAssessmentRequestDto;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AssessmentDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AssessmentResponseDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.ComplianceDTO;
@@ -41,25 +44,37 @@ import com.mdtlabs.coreplatform.spiceservice.patientsymptom.service.PatientSympt
 import com.mdtlabs.coreplatform.spiceservice.patienttracker.service.PatientTrackerService;
 import com.mdtlabs.coreplatform.spiceservice.patienttreatmentplan.service.PatientTreatmentPlanService;
 import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
+
+import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,6 +84,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * <p>
@@ -133,6 +149,12 @@ class AssessmentServiceImplTest {
 
     @Mock
     private CustomizedModulesService customizedModulesService;
+
+    @Mock
+    private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     private AssessmentDTO assessmentDTO = TestDataProvider.getAssessmentDto();
 
@@ -505,6 +527,76 @@ class AssessmentServiceImplTest {
         spiceUtil.close();
         TestDataProvider.cleanUp();
         Assertions.assertEquals(null, response.getPatientDetails().getId());
+    }
+
+    @Test
+    @DisplayName("CreateAssessmentWithFhir Test")
+    void createAssessmentWithEnableFhir() {
+        //given
+        GlucoseLog glucoseLog = TestDataProvider.getGlucoseLog();
+        BpLog bpLog = TestDataProvider.getBpLog();
+        bpLog.setId(1L);
+        PatientTreatmentPlan treatmentPlan = TestDataProvider.getPatientTreatmentPlan();
+        bpLog.setCvdRiskLevel(Constants.CVD_RISK_MEDIUM);
+        bpLog.setCvdRiskScore(Constants.TWO);
+        bpLog.setLatest(Constants.BOOLEAN_TRUE);
+        bpLog.setIsRegularSmoker(Constants.BOOLEAN_FALSE);
+        bpLog.setType(Constants.ASSESSMENT);
+        bpLog.setRiskLevel(Constants.EMPTY);
+        bpLog.setUnitMeasurement(UnitConstants.IMPERIAL);
+        bpLog.setBpTakenOn(new Date());
+        patientTracker = TestDataProvider.getPatientTracker();
+        patientTracker.setRiskLevel(Constants.HIGH);
+        PatientAssessment assessment = TestDataProvider.getPatientAssessment();
+        MentalHealth mentalHealth = TestDataProvider.getMentalHealth();
+        AssessmentResponseDTO responseDTO = TestDataProvider.getAssessmentResponseDto();
+        assessmentDTO.setUnitMeasurement(UnitConstants.IMPERIAL);
+        assessmentDTO.setBpLog(bpLog);
+        assessmentDTO.setGlucoseLog(glucoseLog);
+        assessmentDTO.setPhq4(mentalHealth);
+        Site site = TestDataProvider.getSite();
+        TestDataProvider.init();
+        MockedStatic<SpiceUtil> spiceUtil = mockStatic(SpiceUtil.class);
+        ResponseEntity<Site> siteResponse = new ResponseEntity<>(site, HttpStatus.OK);
+        PatientAssessment patientAssessment = new PatientAssessment(1l, null,
+                Constants.ASSESSMENT, 4L,
+                1L);
+        ReflectionTestUtils.setField(assessmentService, "enableFhir", true);
+        ReflectionTestUtils.setField(assessmentService, "routingKey", "routingKey");
+        ReflectionTestUtils.setField(assessmentService, "exchange", "exchangeName");
+        //when
+        spiceUtil.when(() -> SpiceUtil.convertBpLogUnits(assessmentDTO.getBpLog(), assessmentDTO.getUnitMeasurement()))
+                .thenReturn(bpLog);
+        when(patientTrackerService.getPatientTrackerById(assessmentDTO.getPatientTrackId())).thenReturn(patientTracker);
+        spiceUtil.when(() -> SpiceUtil.convertBpLogUnits(bpLog, UnitConstants.METRIC)).thenReturn(bpLog);
+        BpLog constructBpLog = assessmentService.constructBpLog(assessmentDTO, Constants.CVD_RISK_MEDIUM);
+        when(glucoseLogService.addGlucoseLog(glucoseLog, Constants.BOOLEAN_FALSE)).thenReturn(glucoseLog);
+        when(bpLogService.addBpLog(constructBpLog, Constants.BOOLEAN_FALSE)).thenReturn(constructBpLog);
+        when(assessmentRepository.save(new PatientAssessment(1l, 1l,
+                Constants.ASSESSMENT, assessmentDTO.getTenantId(),
+                assessmentDTO.getPatientTrackId()))).thenReturn(assessment);
+        when(mapper.map(assessmentDTO.getPhq4(), new TypeToken<MentalHealth>() {
+        }.getType())).thenReturn(mentalHealth);
+        doNothing().when(mentalHealthService).setPhq4Score(mentalHealth);
+        when(mentalHealthService.createMentalHealth(mentalHealth, patientTracker,
+                Constants.BOOLEAN_TRUE)).thenReturn(mentalHealth);
+        when(mentalHealthMapper.setPatientTracker(patientTracker, mentalHealth)).thenReturn(patientTracker);
+        doNothing().when(patientTrackerMapper).setPatientTrackerFromBpLog(patientTracker, bpLog);
+        TestDataProvider.getStaticMock();
+        when(adminApiInterface.getSiteById(Constants.AUTH_TOKEN_SUBJECT, 1l, 1l))
+                .thenReturn(siteResponse);
+        glucoseLog = assessmentService.constructGlucoseLog(assessmentDTO);
+        when(treatmentPlanService.getPatientTreatmentPlan(assessmentDTO.getPatientTrackId())).thenReturn(treatmentPlan);
+
+        when(patientTrackerService.addOrUpdatePatientTracker(patientTracker)).thenReturn(patientTracker);
+        when(assessmentRepository.save(patientAssessment)).thenReturn(patientAssessment);
+        doNothing().when(rabbitTemplate).convertAndSend("exchangeName", "routingKey", "");
+        //then
+        AssessmentResponseDTO response = assessmentService.createAssessment(assessmentDTO);
+        spiceUtil.close();
+        TestDataProvider.cleanUp();
+        Assertions.assertEquals(null, response.getPatientDetails().getId());
+
     }
 
     @Test
