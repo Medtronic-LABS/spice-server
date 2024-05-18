@@ -28,7 +28,12 @@ spring:
     host: ${REDIS_HOST}
     port: ${REDIS_PORT}
     password: ${REDIS_PASSWORD}
-
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    
 springdoc:
   packagesToScan: com.mdtlabs.coreplatform.userservice
 
@@ -50,8 +55,17 @@ app:
   reset-password-time-limit-in-minutes: ${RESET_PASSWORD_TIME_LIMIT_IN_MINUTES:60}
   email-app-url: ${EMAIL_APP_URL}
   cfr-email-app-url: ${CFR_EMAIL_APP_URL}
+  enableFhir: ${ENABLE_FHIR}
   public-key: public_key.der
   private-key: private_key.der
+  rabbitmq:
+    queue:
+      name: ${RABBITMQ_QUEUE_NAME}
+    exchange:
+      name: ${RABBITMQ_EXCHANGE_NAME}
+    routing:
+      key:
+        name: ${RABBITMQ_ROUTING_KEY_NAME}
 
 spicelog:
   fileName: './log/SpiceApplicationLog.log'

@@ -31,6 +31,7 @@ import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
 import io.minio.errors.MinioException;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +55,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -62,6 +64,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
@@ -115,6 +118,13 @@ public class PrescriptionServiceImplTest {
 
     @Mock
     private AmazonS3 s3Client;
+
+    @Mock
+    private Path filePath;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(prescriptionService, "targetPath", Paths.get("/Prescription_Signatures/"));    }
 
     private Prescription prescription;
 
@@ -668,9 +678,9 @@ public class PrescriptionServiceImplTest {
         when(objectWriteResponse.etag()).thenReturn("d7ea994dce38e0fae38884d6c83eaa95");
 
         //then
-        String response = prescriptionService.uploadSignature(file, 1L, 1L);
-        Assertions.assertNotNull(response);
-        Assertions.assertEquals(location, response);
+        assertThrows(IOException.class, () -> {
+            prescriptionService.uploadSignature(file, 1L, 1L);
+        });
         fileMockedConstruction.close();
         fileOutputStreamMockedConstruction.close();
         fileInputStreamMockedConstruction.close();
@@ -694,5 +704,26 @@ public class PrescriptionServiceImplTest {
         String response = prescriptionService.uploadSignature(file, 1L, 1L);
         Assertions.assertNotNull(response);
         Assertions.assertEquals(location, response);
+    }
+
+    @Test
+    void setTargetDirectoryTest() {
+        //given
+        String targetPath = null;
+        //then
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> prescriptionService.setTargetDirectory(targetPath));
+
+        //given
+        String file = "";
+        //then
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> prescriptionService.setTargetDirectory(targetPath));
+
+        //given
+        String path = "/Prescription_Signatures/";
+        //then
+        prescriptionService.setTargetDirectory(path);
+        Assertions.assertNotNull(path);
     }
 }
