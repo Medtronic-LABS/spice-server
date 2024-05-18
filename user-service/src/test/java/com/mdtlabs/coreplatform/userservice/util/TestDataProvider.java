@@ -1,5 +1,6 @@
 package com.mdtlabs.coreplatform.userservice.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.mockito.Mockito.mockStatic;
 
 import java.lang.reflect.Field;
@@ -23,6 +24,7 @@ import com.mdtlabs.coreplatform.common.model.dto.EmailDTO;
 import com.mdtlabs.coreplatform.common.model.dto.RoleDTO;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
 import com.mdtlabs.coreplatform.common.model.dto.UserProfileDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountOrganizationDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.AccountWorkflowDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
@@ -46,11 +48,13 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.UserResponseDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.UserSuperAdminDto;
 import com.mdtlabs.coreplatform.common.model.entity.Account;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
+import com.mdtlabs.coreplatform.common.model.entity.County;
 import com.mdtlabs.coreplatform.common.model.entity.Culture;
 import com.mdtlabs.coreplatform.common.model.entity.Operatingunit;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
+import com.mdtlabs.coreplatform.common.model.entity.Subcounty;
 import com.mdtlabs.coreplatform.common.model.entity.Timezone;
 import com.mdtlabs.coreplatform.common.model.entity.User;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
@@ -469,6 +473,9 @@ public class TestDataProvider {
         Site site = new Site();
         site.setName("Site");
         site.setCulture(new Culture(TestConstants.ONE));
+        site.setCountryId(TestConstants.ONE);
+        site.setSubCountyId(TestConstants.ONE);
+        site.setCountyId(TestConstants.ONE);
         return site;
     }
 
@@ -542,4 +549,30 @@ public class TestDataProvider {
         cultureRequestDTO.setCultureId(TestConstants.ONE);
         return cultureRequestDTO;
     }
+
+    public static Subcounty getSubcounty() {
+        Subcounty subcounty = new Subcounty();
+        subcounty.setId(TestConstants.ONE);
+        subcounty.setName(TestConstants.NAME);
+        return subcounty;
+    }
+
+    public static County getCounty() {
+        County county = new County();
+        county.setId(TestConstants.ONE);
+        county.setName(TestConstants.NAME);
+        return county;
+    }
+
+    public static FhirSiteRequestDTO getFhirSiteRequestDTO() {
+        FhirSiteRequestDTO requestDTO = new FhirSiteRequestDTO();
+        requestDTO.setType(TestConstants.SITE_TYPE);
+        requestDTO.setId(TestConstants.ONE);
+        requestDTO.setCountyName(TestConstants.NAME);
+        requestDTO.setName(TestConstants.NAME);
+        requestDTO.setSubCountyName(TestConstants.NAME);
+        requestDTO.setCountryName(TestConstants.NAME);
+        return requestDTO;
+    }
+
 }

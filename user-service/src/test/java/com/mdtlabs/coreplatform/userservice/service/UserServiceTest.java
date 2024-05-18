@@ -10,6 +10,7 @@ import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
 import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
 import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CultureRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.PaginateDTO;
@@ -27,27 +28,34 @@ import com.mdtlabs.coreplatform.common.repository.TimezoneRepository;
 import com.mdtlabs.coreplatform.common.service.UserTokenService;
 import com.mdtlabs.coreplatform.common.util.DateUtil;
 import com.mdtlabs.coreplatform.common.util.Pagination;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
 import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
 import com.mdtlabs.coreplatform.userservice.repository.UserRepository;
 import com.mdtlabs.coreplatform.userservice.service.impl.OrganizationServiceImpl;
 import com.mdtlabs.coreplatform.userservice.service.impl.UserServiceImpl;
 import com.mdtlabs.coreplatform.userservice.util.TestConstants;
 import com.mdtlabs.coreplatform.userservice.util.TestDataProvider;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.modelmapper.internal.InheritingConfiguration;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -123,6 +131,9 @@ class UserServiceTest {
     @Mock
     private AuthenticationFilter authenticationFilter;
 
+    @Mock
+    private RabbitTemplate rabbitTemplate;
+
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
         modelMapper = TestDataProvider.setUp(UserServiceImpl.class, "modelMapper", userService);
@@ -151,15 +162,28 @@ class UserServiceTest {
         user.setId(TestConstants.ZERO);
         user.setRoles(TestDataProvider.getRolesSet());
         user.setUsername(TestConstants.USER_NAME);
-
+        ReflectionTestUtils.setField(userService, "enableFhir", true);
+        ReflectionTestUtils.setField(userService, "exchange", "exchange");
+        ReflectionTestUtils.setField(userService, "routingKey", "key");
+        String jsonMessage = user.toString();
         //when
 
         when(userRepository.findByUsernameAndIsDeletedFalse(user.getUsername())).thenReturn(null);
         when(userRepository.save(user)).thenReturn(user);
         when(userRepository.getUserByUsername(TestConstants.USER_NAME, Boolean.TRUE)).thenReturn(null);
+        MockedConstruction<ObjectMapper> objectMapperMockedConstruction =
+                Mockito.mockConstruction(ObjectMapper.class, (objectMapper, context) -> {
+                    when(objectMapper.writeValueAsString(any(FhirSiteRequestDTO.class))).thenReturn(jsonMessage);
+                });
+        MockedStatic<UniqueCodeGenerator> uniqueCodeGeneratorMockedStatic = Mockito.mockStatic(UniqueCodeGenerator.class);
+        uniqueCodeGeneratorMockedStatic.when(() -> UniqueCodeGenerator.generateUniqueCode(jsonMessage)).thenReturn(Constants.DEDUPLICATION_ID);
+        doNothing().when(rabbitTemplate).convertAndSend("exchange", "keyName", jsonMessage);
+
 
         //then
         User userResponse = userService.addUser(user);
+        objectMapperMockedConstruction.close();
+        uniqueCodeGeneratorMockedStatic.close();
         Assertions.assertEquals(user.getUsername(), userResponse.getUsername());
     }
 
