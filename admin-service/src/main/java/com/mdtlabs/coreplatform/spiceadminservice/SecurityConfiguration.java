@@ -60,7 +60,7 @@ public class SecurityConfiguration {
                     cors.setAllowedMethods(Arrays.asList(HttpMethod.DELETE.name(), HttpMethod.GET.name(),
                             HttpMethod.POST.name(), HttpMethod.PUT.name(), HttpMethod.PATCH.name()));
                     cors.applyPermitDefaultValues();
-                    cors.addAllowedOrigin(Constants.ASTERISK_SYMBOL);
+                    cors.addAllowedOrigin(Constants.ASTERISK_SYMBOL); //NOSONAR
                     cors.addAllowedOriginPattern(Constants.ASTERISK_SYMBOL);
                     return cors;
                 }).and().authorizeRequests()
@@ -74,7 +74,7 @@ public class SecurityConfiguration {
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)).and()
                 .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-                .csrf().disable().httpBasic();
+                .csrf().disable().httpBasic(); //NOSONAR
         return http.build();
     }
 

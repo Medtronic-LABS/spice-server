@@ -1,27 +1,30 @@
 package com.mdtlabs.coreplatform.spiceservice.prescription.service;
 
-import com.mdtlabs.coreplatform.common.Constants;
-import com.mdtlabs.coreplatform.common.exception.BadRequestException;
-import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
-import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionResponseDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionHistoryResponse;
-import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
-import com.mdtlabs.coreplatform.common.model.entity.spice.PatientVisit;
-import com.mdtlabs.coreplatform.common.model.entity.spice.Prescription;
-import com.mdtlabs.coreplatform.common.model.entity.spice.PrescriptionHistory;
-import com.mdtlabs.coreplatform.common.util.DateUtil;
-import com.mdtlabs.coreplatform.spiceservice.common.mapper.PrescriptionMapper;
-import com.mdtlabs.coreplatform.spiceservice.patienttracker.service.PatientTrackerService;
-import com.mdtlabs.coreplatform.spiceservice.patienttreatmentplan.service.PatientTreatmentPlanService;
-import com.mdtlabs.coreplatform.spiceservice.patientvisit.service.PatientVisitService;
-import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionHistoryRepository;
-import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionRepository;
-import com.mdtlabs.coreplatform.spiceservice.prescription.service.impl.PrescriptionServiceImpl;
-import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectRequest;
@@ -39,7 +42,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -49,29 +56,31 @@ import org.modelmapper.internal.InheritingConfiguration;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import com.mdtlabs.coreplatform.common.Constants;
+import com.mdtlabs.coreplatform.common.exception.BadRequestException;
+import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
+import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionResponseDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriberDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionHistoryResponse;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PrescriptionRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.UserListDTO;
+import com.mdtlabs.coreplatform.common.model.entity.spice.PatientVisit;
+import com.mdtlabs.coreplatform.common.model.entity.spice.Prescription;
+import com.mdtlabs.coreplatform.common.model.entity.spice.PrescriptionHistory;
+import com.mdtlabs.coreplatform.common.util.DateUtil;
+import com.mdtlabs.coreplatform.spiceservice.UserApiInterface;
+import com.mdtlabs.coreplatform.spiceservice.common.mapper.PrescriptionMapper;
+import com.mdtlabs.coreplatform.spiceservice.patienttracker.service.PatientTrackerService;
+import com.mdtlabs.coreplatform.spiceservice.patienttreatmentplan.service.PatientTreatmentPlanService;
+import com.mdtlabs.coreplatform.spiceservice.patientvisit.service.PatientVisitService;
+import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionHistoryRepository;
+import com.mdtlabs.coreplatform.spiceservice.prescription.repository.PrescriptionRepository;
+import com.mdtlabs.coreplatform.spiceservice.prescription.service.impl.PrescriptionServiceImpl;
+import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
 
 /**
  * <p>
@@ -121,6 +130,9 @@ public class PrescriptionServiceImplTest {
 
     @Mock
     private Path filePath;
+
+    @Mock
+    private UserApiInterface userApiInterface;
 
     @BeforeEach
     void setUp() {
@@ -725,5 +737,49 @@ public class PrescriptionServiceImplTest {
         //then
         prescriptionService.setTargetDirectory(path);
         Assertions.assertNotNull(path);
+    }
+
+    @Test
+    void removePrescriptionWithTrackIdTest() {
+        //given
+        long trackId = 1l;
+        prescriptions.add(TestDataProvider.getPrescription());
+        prescriptionHistories.add(TestDataProvider.getPrescriptionHistory());
+        //when
+        when(prescriptionRepository.findBypatientTrackId(trackId)).thenReturn(prescriptions);
+        when(prescriptionRepository.saveAll(prescriptions)).thenReturn(prescriptions);
+        when(historyRepository.findByPatientTrackId(trackId)).thenReturn(prescriptionHistories);
+        when(historyRepository.saveAll(prescriptionHistories)).thenReturn(prescriptionHistories);
+        //then
+        prescriptionService.removePrescription(trackId);
+        verify(historyRepository, atLeastOnce()).saveAll(prescriptionHistories);
+    }
+
+    @Test
+    void getPatientPrescribedDetailsTest() {
+        //given
+        long trackId = 1L;
+        long tenantId = 1L;
+        prescription = TestDataProvider.getPrescription();
+        prescription.setCreatedBy(1L);
+        PrescriptionHistory prescriptionHistory = TestDataProvider.getPrescriptionHistory();
+        UserListDTO userListDTO = TestDataProvider.getUserListDTO();
+        userListDTO.setCountryCode("+133");
+        PrescriberDTO prescriberDTO = TestDataProvider.getPrescriberDTO();
+        TestDataProvider.init();
+        //when
+        when(prescriptionRepository.findFirstByPatientTrackIdAndTenantIdOrderByUpdatedByDesc(trackId,
+                tenantId)).thenReturn(prescription);
+        TestDataProvider.getStaticMock();
+        when(userApiInterface.getPrescriberDetails(Constants.AUTH_TOKEN_SUBJECT, tenantId, 1L)).thenReturn(userListDTO);
+        when(historyRepository
+                .findFirstByPatientTrackIdAndPrescriptionFilledDaysGreaterThanOrderByUpdatedAtDesc(
+                        trackId, Constants.ZERO)).thenReturn(prescriptionHistory);
+        //then
+        PrescriberDTO response = prescriptionService.getPatientPrescribedDetails(trackId, tenantId);
+        TestDataProvider.cleanUp();
+        Assertions.assertEquals(prescriberDTO, response);
+        Assertions.assertEquals(prescriberDTO.getCountryCode(), response.getCountryCode());
+        Assertions.assertEquals(prescriberDTO.getPhoneNumber(), response.getPhoneNumber());
     }
 }

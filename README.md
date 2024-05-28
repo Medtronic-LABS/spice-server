@@ -142,6 +142,7 @@ APP_VERSION=1.0.0
 EMAIL_APP_URL=http://spicetest.com/reset-password/
 #AWS_ACCESS_KEY=
 #AWS_SECRET_KEY=
+PASSWORD=password
 
 ```
 >Note: The values for the environmental variables should be changed based on the chosen service.
@@ -258,6 +259,8 @@ S3 bucket.
 `APP_VERSION`: This property specifies the app version of the spice application in the mobile device.
 
 `EMAIL_APP_URL`: This property specifies the app url of the application
+
+`PASSWORD`: `Password` parameter key for security config and the value must be `password`.
 
 ## Alternative solution to AWS services using open-source and free service.
 
