@@ -629,4 +629,19 @@ class SiteServiceTest {
         assertEquals(response.size(), actualCoordinates.size());
         assertTrue(actualCoordinates.containsKey(Constants.VALUE));
     }
+
+    @Test
+    void getAllSiteIdAndName() {
+        //given
+        Site site = TestDataProvider.getSite();
+        site.setId(1l);
+        site.setName(Constants.NAME);
+        List<Site> sites = List.of(site);
+        //when
+        when(siteRepository.findAll()).thenReturn(sites);
+        //then
+        Map<Long, String> response = siteService.getAllSiteIdAndName();
+        assertTrue(response.containsKey(1l));
+        assertTrue(response.containsValue("name"));
+    }
 }

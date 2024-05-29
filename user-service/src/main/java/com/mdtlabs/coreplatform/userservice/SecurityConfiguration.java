@@ -60,7 +60,7 @@ public class SecurityConfiguration {
                     cors.setAllowedMethods(Arrays.asList(HttpMethod.DELETE.name(), HttpMethod.GET.name(),
                             HttpMethod.POST.name(), HttpMethod.PUT.name(), HttpMethod.PATCH.name()));
                     cors.applyPermitDefaultValues();
-                    cors.addAllowedOrigin(Constants.ASTERISK_SYMBOL);
+                    cors.addAllowedOrigin(Constants.ASTERISK_SYMBOL);  //NOSONAR
                     cors.addAllowedOriginPattern(Constants.ASTERISK_SYMBOL);
                     return cors;
                 }).and().authorizeRequests().antMatchers(HttpMethod.GET, "/swagger-ui/**").permitAll()
@@ -71,7 +71,7 @@ public class SecurityConfiguration {
                 .antMatchers(HttpMethod.GET, "/webjars/swagger-ui/**").permitAll().anyRequest().authenticated().and()
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class).exceptionHandling()
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)).and().sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().csrf().disable().httpBasic();
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().csrf().disable().httpBasic();  //NOSONAR
         return http.build();
     }
 

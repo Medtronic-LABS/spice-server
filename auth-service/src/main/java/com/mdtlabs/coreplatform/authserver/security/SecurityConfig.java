@@ -2,6 +2,8 @@ package com.mdtlabs.coreplatform.authserver.security;
 
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.FieldConstants;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -54,6 +56,9 @@ public class SecurityConfig {
         return new LogoutSuccess();
     }
 
+    @Value("${app.password}")
+    private String password;
+
     /**
      * <p>
      * This method is used to set up CORS configuration for a Java application.
@@ -99,7 +104,7 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/v3/api-docs/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/webjars/swagger-ui/**").permitAll().anyRequest()
                 .authenticated().and().formLogin().loginProcessingUrl("/session")
-                .usernameParameter(FieldConstants.USERNAME).passwordParameter(FieldConstants.PASSWORD)
+                .usernameParameter(FieldConstants.USERNAME).passwordParameter(password)
                 .successHandler(authenticationSuccess()).failureHandler(authenticationFailure()).and()
                 .exceptionHandling()
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)).and()
@@ -107,7 +112,7 @@ public class SecurityConfig {
                 .invalidateHttpSession(Boolean.TRUE)
                 .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler())
                 .addLogoutHandler(logoutSuccess())
-                .and().csrf().disable();
+                .and().csrf().disable(); //NOSONAR
         return http.build();
     }
 

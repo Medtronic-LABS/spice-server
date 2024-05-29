@@ -1,8 +1,26 @@
 package com.mdtlabs.coreplatform.spiceservice.prescription.controller;
 
+import java.util.List;
+
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionResponseDTO;
@@ -13,24 +31,10 @@ import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Prescription;
 import com.mdtlabs.coreplatform.common.model.entity.spice.PrescriptionHistory;
+import com.mdtlabs.coreplatform.spiceservice.message.SuccessCode;
 import com.mdtlabs.coreplatform.spiceservice.message.SuccessResponse;
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.PrescriptionService;
 import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.HttpStatus;
-
-import java.util.List;
-
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
 
 /**
  * <p>
@@ -194,6 +198,47 @@ class PrescriptionControllerTest {
                 .getReFillPrescriptionHistory(new SearchRequestDTO());
         Assertions.assertTrue(prescriptionService.getRefillPrescriptionHistory(new SearchRequestDTO()).isEmpty());
         Assertions.assertEquals(HttpStatus.OK, listSuccessResponse.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("PrescriptionUpdateTest")
+    void updatePrescription() {
+        //given
+        String prescriptionRequest = "";
+        MultipartFile signatureFile = null;
+        //then
+        Assertions.assertThrows(SpiceValidation.class,
+                () -> prescriptionController.addPrescription(prescriptionRequest, signatureFile));
+
+        //given
+        String object = "";
+        MultipartFile signature = null;
+        MockedConstruction<ObjectMapper> objectMapperMockedConstruction =
+                Mockito.mockConstruction(ObjectMapper.class, (objectMapper, context) -> {
+                    when(objectMapper.readValue(object, PrescriptionRequestDTO.class))
+                            .thenThrow(JsonProcessingException.class);
+                });
+        //then
+        Assertions.assertThrows(SpiceValidation.class,
+                () ->prescriptionController.addPrescription(object, signature));
+        objectMapperMockedConstruction.close();
+
+        //given
+        String prescriptionDto = "";
+        MultipartFile multipartFile = null;
+        SuccessResponse<String> response = new SuccessResponse<>(SuccessCode.PRESCRIPTION_SAVE, HttpStatus.CREATED);
+        PrescriptionRequestDTO requestDTOs = TestDataProvider.getPrescriptionRequestDTO();
+        //when
+        MockedConstruction<ObjectMapper> objectMapperMocked =
+                Mockito.mockConstruction(ObjectMapper.class, (objectMapper, context) -> {
+                    when(objectMapper.readValue(prescriptionDto, PrescriptionRequestDTO.class))
+                            .thenReturn(requestDTOs);
+                });
+        //then
+        SuccessResponse<String> result = prescriptionController.addPrescription(prescriptionRequest, multipartFile);
+        objectMapperMocked.close();
+        Assertions.assertEquals(response, result);
+        Assertions.assertEquals(HttpStatus.CREATED, result.getStatusCode());
     }
 }
 

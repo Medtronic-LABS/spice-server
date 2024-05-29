@@ -13,7 +13,6 @@ import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
 import com.mdtlabs.coreplatform.common.logger.Logger;
 import com.mdtlabs.coreplatform.common.model.dto.EmailDTO;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
-import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirUserRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.CultureRequestDTO;
@@ -29,7 +28,6 @@ import com.mdtlabs.coreplatform.common.model.entity.EmailTemplate;
 import com.mdtlabs.coreplatform.common.model.entity.EmailTemplateValue;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
-import com.mdtlabs.coreplatform.common.model.entity.Site;
 import com.mdtlabs.coreplatform.common.model.entity.User;
 import com.mdtlabs.coreplatform.common.service.UserTokenService;
 import com.mdtlabs.coreplatform.common.util.CommonUtil;
@@ -71,6 +69,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.spec.SecretKeySpec;
 import javax.transaction.Transactional;
 import javax.xml.bind.DatatypeConverter;
+
 import java.security.Key;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -704,7 +703,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
      * set values to FhirSiteRequest and send to rabbitmq server.
      *
      * @param userResponse list of users.
-     *
      */
     private void setAndSendUserRequest(List<User> userResponse) {
         try {
@@ -716,15 +714,15 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             String deduplicationId = UniqueCodeGenerator.generateUniqueCode(jsonString);
             Map<String, Object> message = new HashMap<>();
             message.put(Constants.DEDUPLICATION_ID, deduplicationId);
-            message.put(Constants.BODY,jsonString);
+            message.put(Constants.BODY, jsonString);
             String jsonMessage = objectMapper.writeValueAsString(message);
             Logger.logDebug(Constants.USER_LOGGER + jsonMessage);
-            rabbitTemplate.convertAndSend(exchange,routingKey,jsonMessage);
+            rabbitTemplate.convertAndSend(exchange, routingKey, jsonMessage);
         } catch (JsonProcessingException jsonException) {
-            Logger.logError(Constants.OBJECT_TO_STRING_LOGGER ,jsonException);
+            Logger.logError(Constants.OBJECT_TO_STRING_LOGGER, jsonException);
         } catch (AmqpException amqpException) {
             Logger.logError(Constants.RABBIT_MQ_LOGGER, amqpException);
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e);
             Logger.logError(Constants.ERROR_LOGGER + e);
         }

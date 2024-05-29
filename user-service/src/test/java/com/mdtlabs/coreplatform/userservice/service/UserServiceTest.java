@@ -1,70 +1,5 @@
 package com.mdtlabs.coreplatform.userservice.service;
 
-import com.mdtlabs.coreplatform.AuthenticationFilter;
-import com.mdtlabs.coreplatform.common.Constants;
-import com.mdtlabs.coreplatform.common.FieldConstants;
-import com.mdtlabs.coreplatform.common.contexts.UserContextHolder;
-import com.mdtlabs.coreplatform.common.exception.BadRequestException;
-import com.mdtlabs.coreplatform.common.exception.DataConflictException;
-import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
-import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
-import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
-import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
-import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.CultureRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.PaginateDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.ResponseListDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.UserListDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.UserOrganizationDTO;
-import com.mdtlabs.coreplatform.common.model.dto.spice.UserSuperAdminDto;
-import com.mdtlabs.coreplatform.common.model.entity.Organization;
-import com.mdtlabs.coreplatform.common.model.entity.Role;
-import com.mdtlabs.coreplatform.common.model.entity.Timezone;
-import com.mdtlabs.coreplatform.common.model.entity.User;
-import com.mdtlabs.coreplatform.common.repository.TimezoneRepository;
-import com.mdtlabs.coreplatform.common.service.UserTokenService;
-import com.mdtlabs.coreplatform.common.util.DateUtil;
-import com.mdtlabs.coreplatform.common.util.Pagination;
-import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
-import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
-import com.mdtlabs.coreplatform.userservice.repository.UserRepository;
-import com.mdtlabs.coreplatform.userservice.service.impl.OrganizationServiceImpl;
-import com.mdtlabs.coreplatform.userservice.service.impl.UserServiceImpl;
-import com.mdtlabs.coreplatform.userservice.util.TestConstants;
-import com.mdtlabs.coreplatform.userservice.util.TestDataProvider;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
-import org.modelmapper.internal.InheritingConfiguration;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,12 +17,83 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
+import org.modelmapper.internal.InheritingConfiguration;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.mdtlabs.coreplatform.AuthenticationFilter;
+import com.mdtlabs.coreplatform.common.Constants;
+import com.mdtlabs.coreplatform.common.FieldConstants;
+import com.mdtlabs.coreplatform.common.contexts.UserContextHolder;
+import com.mdtlabs.coreplatform.common.exception.BadRequestException;
+import com.mdtlabs.coreplatform.common.exception.DataConflictException;
+import com.mdtlabs.coreplatform.common.exception.DataNotAcceptableException;
+import com.mdtlabs.coreplatform.common.exception.DataNotFoundException;
+import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
+import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
+import com.mdtlabs.coreplatform.common.model.dto.fhir.FhirSiteRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.CommonRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.CultureRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.OutBoundEmailDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.PaginateDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.RequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.ResponseListDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.SearchRequestDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.UserListDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.UserOrganizationDTO;
+import com.mdtlabs.coreplatform.common.model.dto.spice.UserSuperAdminDto;
+import com.mdtlabs.coreplatform.common.model.entity.EmailTemplate;
+import com.mdtlabs.coreplatform.common.model.entity.Organization;
+import com.mdtlabs.coreplatform.common.model.entity.Role;
+import com.mdtlabs.coreplatform.common.model.entity.Timezone;
+import com.mdtlabs.coreplatform.common.model.entity.User;
+import com.mdtlabs.coreplatform.common.repository.TimezoneRepository;
+import com.mdtlabs.coreplatform.common.service.UserTokenService;
+import com.mdtlabs.coreplatform.common.util.DateUtil;
+import com.mdtlabs.coreplatform.common.util.Pagination;
+import com.mdtlabs.coreplatform.common.util.UniqueCodeGenerator;
+import com.mdtlabs.coreplatform.userservice.NotificationApiInterface;
+import com.mdtlabs.coreplatform.userservice.mapper.UserMapper;
+import com.mdtlabs.coreplatform.userservice.repository.UserRepository;
+import com.mdtlabs.coreplatform.userservice.service.impl.OrganizationServiceImpl;
+import com.mdtlabs.coreplatform.userservice.service.impl.UserServiceImpl;
+import com.mdtlabs.coreplatform.userservice.util.TestConstants;
+import com.mdtlabs.coreplatform.userservice.util.TestDataProvider;
 
 /**
  * <p>
@@ -104,9 +110,6 @@ class UserServiceTest {
 
     @InjectMocks
     private UserServiceImpl userService;
-
-    @Mock
-    UserServiceImpl userServiceImpl = new UserServiceImpl();
 
     @Mock
     private UserRepository userRepository;
@@ -133,6 +136,9 @@ class UserServiceTest {
 
     @Mock
     private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private NotificationApiInterface notificationApiInterface;
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
@@ -197,7 +203,7 @@ class UserServiceTest {
         when(userRepository.findByUsernameAndIsDeletedFalse(user.getUsername())).thenReturn(null);
 
         //then
-        assertThrows(SpiceValidation.class, () -> userService.addUser(user));
+        Assertions.assertThrows(SpiceValidation.class, () -> userService.addUser(user));
     }
 
     @Test
@@ -1153,7 +1159,7 @@ class UserServiceTest {
         //then
         ResponseListDTO response = userService.getLockedUsers(requestObject);
         TestDataProvider.cleanUp();
-        Assertions.assertNotNull(response);
+        assertNotNull(response);
     }
 
     @Test
@@ -1273,5 +1279,22 @@ class UserServiceTest {
         //then
         userService.redRiskUserUpdate(existingUser, isRedRisk);
         assertFalse(existingUser.getRoles().contains(redRiskRole));
+    }
+
+    @Test
+    void sendEmailTestWithException() {
+        //given
+        User user = TestDataProvider.getUser();
+        String jwt = "Token";
+        boolean isFromCreation = false;
+        String appType = "";
+        ResponseEntity<EmailTemplate> responseEntity = new ResponseEntity<>(null, HttpStatus.OK);
+        //when
+        when(notificationApiInterface.getEmailTemplate(
+                (Constants.FORGOT_PASSWORD_USER), appType)).thenReturn(responseEntity);
+        //then
+        userService.sendEmail(user, jwt, isFromCreation, appType);
+        verify(notificationApiInterface, never()).createOutBoundEmail(
+                any(OutBoundEmailDTO.class));
     }
 }

@@ -88,6 +88,7 @@ import com.mdtlabs.coreplatform.common.model.entity.Operatingunit;
 import com.mdtlabs.coreplatform.common.model.entity.Organization;
 import com.mdtlabs.coreplatform.common.model.entity.Program;
 import com.mdtlabs.coreplatform.common.model.entity.Role;
+import com.mdtlabs.coreplatform.common.model.entity.SMSTemplate;
 import com.mdtlabs.coreplatform.common.model.entity.Site;
 import com.mdtlabs.coreplatform.common.model.entity.Subcounty;
 import com.mdtlabs.coreplatform.common.model.entity.Timezone;
@@ -1557,6 +1558,10 @@ public class TestDataProvider {
 
     public static UserListDTO getUserListDTO() {
         UserListDTO userListDTO = new UserListDTO();
+        userListDTO.setFirstName(Constants.FIRST_NAME);
+        userListDTO.setLastName(Constants.LAST_NAME);
+        userListDTO.setCountryCode(Constants.COUNTRY);
+        userListDTO.setPhoneNumber(Constants.PHONE_NUMBER);
         userListDTO.setId(1L);
         userListDTO.setCountry(getCountry());
         userListDTO.setCultureId(1L);
@@ -1700,4 +1705,11 @@ public class TestDataProvider {
         return customizationRequestDTO;
     }
 
+    public static SMSTemplate getSMSTemplate() {
+        SMSTemplate smsTemplate = new SMSTemplate();
+        smsTemplate.setId(1);
+        smsTemplate.setType(Constants.TYPE);
+        smsTemplate.setBody(Constants.BODY);
+        return smsTemplate;
+    }
 }

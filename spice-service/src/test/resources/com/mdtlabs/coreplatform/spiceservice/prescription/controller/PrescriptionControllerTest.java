@@ -1,8 +1,24 @@
 package com.mdtlabs.coreplatform.spiceservice.prescription.controller;
 
+import java.util.List;
+
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.http.HttpStatus;
+
 import com.mdtlabs.coreplatform.common.exception.SpiceValidation;
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionRequestDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.FillPrescriptionResponseDTO;
@@ -16,21 +32,6 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.PrescriptionHistory;
 import com.mdtlabs.coreplatform.spiceservice.message.SuccessResponse;
 import com.mdtlabs.coreplatform.spiceservice.prescription.service.PrescriptionService;
 import com.mdtlabs.coreplatform.spiceservice.util.TestDataProvider;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.HttpStatus;
-
-import java.util.List;
-
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
 
 /**
  * <p>
@@ -42,7 +43,7 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class PrescriptionControllerTest {
+class PrescriptionControllerTest {
 
     @InjectMocks
     private PrescriptionController prescriptionController;

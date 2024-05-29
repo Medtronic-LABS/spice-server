@@ -29,6 +29,7 @@ services:
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+      - PASSWORD=${PASSWORD}
     volumes:
       - ${PROJECT_PATH}/log:/log
     networks:
@@ -64,6 +65,7 @@ services:
       - RABBITMQ_PORT=${RABBITMQ_PORT}
       - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - PASSWORD=${PASSWORD}
     volumes:
       - ${PROJECT_PATH}/log:/log
     networks:
@@ -186,6 +188,7 @@ services:
       - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
       - ENABLE_FHIR=${ENABLE_FHIR}
+      - PASSWORD=${PASSWORD}
     networks:
       - spice-app-db-network
 

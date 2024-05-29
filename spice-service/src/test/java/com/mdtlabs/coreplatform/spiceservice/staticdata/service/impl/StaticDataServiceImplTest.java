@@ -1,6 +1,7 @@
 package com.mdtlabs.coreplatform.spiceservice.staticdata.service.impl;
 
 import com.mdtlabs.coreplatform.common.Constants;
+import com.mdtlabs.coreplatform.common.model.dto.spice.MetaFormDTO;
 import com.mdtlabs.coreplatform.common.model.dto.spice.SiteResponseDTO;
 import com.mdtlabs.coreplatform.common.model.entity.Account;
 import com.mdtlabs.coreplatform.common.model.entity.Country;
@@ -16,6 +17,7 @@ import com.mdtlabs.coreplatform.common.model.entity.spice.CurrentMedication;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Diagnosis;
 import com.mdtlabs.coreplatform.common.model.entity.spice.DosageForm;
 import com.mdtlabs.coreplatform.common.model.entity.spice.DosageFrequency;
+import com.mdtlabs.coreplatform.common.model.entity.spice.FormMetaUi;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Frequency;
 import com.mdtlabs.coreplatform.common.model.entity.spice.Lifestyle;
 import com.mdtlabs.coreplatform.common.model.entity.spice.MedicalCompliance;
@@ -39,6 +41,7 @@ import com.mdtlabs.coreplatform.spiceservice.metadata.service.CurrentMedicationS
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.DiagnosisService;
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.DosageFormService;
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.DosageFrequencyService;
+import com.mdtlabs.coreplatform.spiceservice.metadata.service.FormMetaService;
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.LifestyleService;
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.MedicalComplianceService;
 import com.mdtlabs.coreplatform.spiceservice.metadata.service.ModelQuestionsService;
@@ -145,6 +148,9 @@ class StaticDataServiceImplTest {
 
     @Mock
     private LifestyleService lifestyleService;
+
+    @Mock
+    private FormMetaService formMetaService;
 
     @BeforeEach
     void init() throws NoSuchFieldException, IllegalAccessException {
@@ -365,5 +371,28 @@ class StaticDataServiceImplTest {
         ReflectionTestUtils.setField(staticDataService, "appVersion", "1.0.5");
         boolean response = staticDataService.checkAppVersion("1.0.5");
         assertTrue(response);
+    }
+
+    @Test
+    void getMetaFormDataTest() {
+        //given
+        String form = "";
+        //when
+        when(formMetaService.getMetaForms(form)).thenReturn(null);
+        //then
+        MetaFormDTO response = staticDataService.getMetaFormData(form);
+        Assertions.assertNull(response);
+        Assertions.assertEquals(null, response);
+
+        //given
+        String request ="";
+        FormMetaUi formMetaUi = TestDataProvider.getFormMetaUi();
+        //when
+        when(formMetaService.getMetaForms(form)).thenReturn(formMetaUi);
+        //then
+        MetaFormDTO result = staticDataService.getMetaFormData(form);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(formMetaUi.getId(), result.getId());
+        Assertions.assertEquals(formMetaUi.getFormName(), result.getFormName());
     }
 }
