@@ -1,7 +1,7 @@
 # SPICE-Opensource
 
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=medtronic-labs_spice-server&metric=coverage)](https://sonarcloud.io/summary/new_code?id=medtronic-labs_spice-server)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=medtronic-labs_spice-server&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=medtronic-labs_spice-server)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Medtronic-LABS_spice-server&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Medtronic-LABS_spice-server)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Medtronic-LABS_spice-server&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Medtronic-LABS_spice-server)
 
 This is the backend for the Spice app to help track hypertensive and diabetic patients across a population.
 
