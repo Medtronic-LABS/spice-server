@@ -24,7 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
@@ -226,7 +226,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
     @PostConstruct
     private void tokenDecrypt() {
         try {
-            Resource resource = new ClassPathResource(privateKey);
+            Resource resource = new DefaultResourceLoader().getResource(privateKey);
             byte[] data = FileCopyUtils.copyToByteArray(resource.getInputStream());
             PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(data);
             KeyFactory kf = KeyFactory.getInstance(Constants.RSA);

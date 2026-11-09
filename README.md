@@ -109,6 +109,8 @@ REDIS_HOST=192.169.33.10
 REDIS_PORT=6379
 SERVER_REGION=us-east-1
 MAIL_SEND=false
+PRIVATE_KEY_PATH=file:/keys/private_key.der
+PUBLIC_KEY_PATH=file:/keys/public_key.der
 ENABLE_SMS_NOTIFICATION=false
 SHEDLOCK_EMAIL_START=PT30S
 SHEDLOCK_EMAIL_STOP=PT02M
@@ -129,15 +131,15 @@ ACCESS_NAME_MINIO=minioadmin
 ACCESS_SECRET_MINIO=minioadmin
 BUCKET_NAME_MINIO=test
 ENABLE_SMS_NOTIFICATION_TWILIO=false
-TWILIO_ACCOUNT_SID=tyretyey436435
-TWILIO_AUTH_TOKEN=gfhfdhdfg64564
-TWILIO_FROM_PHONENO=+3535354
-SENDGRID_API_KEY=SENDGRID_API_KEY_REDACTED
+TWILIO_ACCOUNT_SID=<your-twilio-account-sid>
+TWILIO_AUTH_TOKEN=<your-twilio-auth-token>
+TWILIO_FROM_PHONENO=<your-twilio-phone-number>
+SENDGRID_API_KEY=<your-sendgrid-api-key>
 ENABLE_SMS_NOTIFICATION_SNS=false
 MAIL_FROM=spice@test.com
 MAIL_HOST=smtp.sendgrid.net
 MAIL_PORT=587
-MAIL_PASSWORD=SENDGRID_API_KEY_REDACTED
+MAIL_PASSWORD=<your-sendgrid-api-key>
 MAIL_USER=apikey
 APP_VERSION=1.0.0
 EMAIL_APP_URL=http://spicetest.com/reset-password/
@@ -238,6 +240,8 @@ timezone set to UTC, with the database name.
 
 `SENDGRID_API_KEY`: This property specifies the sendgrid api key that is created.
 
+`PRIVATE_KEY_PATH` / `PUBLIC_KEY_PATH`: Locations of the RSA keypair used for token encryption (a `file:` URL, or a classpath name). Generate your own with `scripts/generate-keys.sh`; never commit keys.
+
 `LOCAL_FILE_SYSTEM_PATH`: This property specifies the path to the directory on the server where prescription signatures
 are stored.
 
@@ -327,6 +331,16 @@ S3 bucket.
 - Visit the [Twilio] official site and create a free account to get the account sid, auth token and twilio phone number.
 
 > Note: If you are using the twilio service, please enter the corresponding values for the fields `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN and `TWILIO_FROM_PHONENO` in .env.
+
+### RSA key setup
+
+No keys are shipped with this repository. Generate a keypair before the first run (writes `./keys`, which is git-ignored and mounted read-only into the services by `docker-compose.yml`):
+
+```bash
+./scripts/generate-keys.sh
+```
+
+In production, supply the keys from a secret store (for example Kubernetes Secrets or AWS Secrets Manager) and point `PRIVATE_KEY_PATH` / `PUBLIC_KEY_PATH` at the mounted files.
 
 ## Deployment
 

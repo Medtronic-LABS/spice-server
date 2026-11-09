@@ -54,7 +54,7 @@ app:
   mail-host: ${MAIL_HOST:smtp.sendgrid.net}
   mail-port: ${MAIL_PORT:587}
   mail-user: ${MAIL_USER:apikey}
-  mail-password: ${MAIL_PASSWORD:SENDGRID_API_KEY_REDACTED}
+  mail-password: ${MAIL_PASSWORD}
   file-path: ${LOCAL_FILE_SYSTEM_PATH:/home/ideas2it/Desktop}
   mail-send: ${MAIL_SEND:true}
   page-count: ${PAGE_COUNT:10}
@@ -62,8 +62,8 @@ app:
   login-count-limit: ${LOGIN_COUNT_LIMIT:5}
   reset-password-count-limit: ${RESET_PASSWORD_COUNT_LIMIT:5}
   forget-password-count-limit: ${FORGET_PASSWORD_COUNT_LIMIT:5}
-  public-key: public_key.der
-  private-key: private_key.der
+  public-key: ${PUBLIC_KEY_PATH}
+  private-key: ${PRIVATE_KEY_PATH}
   send-enrollment-notification: ${SEND_ENROLLMENT_NOTIFICATON:true}
   is-next-medical-review-job: ${IS_NEXT_MEDICAL_REVIEW_JOB}
   is-next-bp-job: ${IS_NEXT_BP_JOB}
@@ -88,8 +88,8 @@ app:
 cloud:
   aws:
     credentials:
-      access-key: ${ACCESS-KEY:56356EWRTERWTE}
-      secret-key: ${SECRET-KEY:YETYETRY6456}
+      access-key: ${ACCESS-KEY:}
+      secret-key: ${SECRET-KEY:}
     region:
       static: ${SERVER_REGION}
     stack:

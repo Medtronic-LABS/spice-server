@@ -1,5 +1,6 @@
 package com.mdtlabs.coreplatform.authserver.security;
 
+import com.mdtlabs.coreplatform.util.TestKeys;
 import javax.servlet.http.HttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,7 +44,7 @@ class LogoutSuccessTest {
     @Test
     void toVerifyLogout() {
         //given
-        ReflectionTestUtils.setField(logoutSuccess, "privateKey", "private_key.der");
+        ReflectionTestUtils.setField(logoutSuccess, "privateKey", TestKeys.PRIVATE_KEY_URI);
         MockHttpServletRequest httpServletRequest = new MockHttpServletRequest();
         httpServletRequest.addHeader(HttpHeaders.AUTHORIZATION, Constants.BEARER + TestConstants.ERROR_TOKEN);
         HttpServletResponse httpServletResponse = new MockHttpServletResponse();
@@ -57,7 +58,7 @@ class LogoutSuccessTest {
     //  @Test
     void logout() {
         //given
-        ReflectionTestUtils.setField(logoutSuccess, "privateKey", "private_key.der");
+        ReflectionTestUtils.setField(logoutSuccess, "privateKey", TestKeys.PRIVATE_KEY_URI);
         MockHttpServletRequest httpServletRequest = new MockHttpServletRequest();
         httpServletRequest.addHeader(HttpHeaders.AUTHORIZATION, Constants.BEARER + TestConstants.TOKEN);
         HttpServletResponse httpServletResponse = new MockHttpServletResponse();

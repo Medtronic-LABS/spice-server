@@ -24,6 +24,8 @@ services:
       - redisservice
       - mypostgres
     environment:
+      - PRIVATE_KEY_PATH=${PRIVATE_KEY_PATH}
+      - PUBLIC_KEY_PATH=${PUBLIC_KEY_PATH}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_USERNAME=${DATABASE_USERNAME}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
@@ -31,6 +33,7 @@ services:
       - REDIS_PORT=${REDIS_PORT}
     volumes:
       - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/keys:/keys:ro
     networks:
       - spice-app-db-network
 
@@ -48,6 +51,8 @@ services:
       - mypostgres
       - redisservice
     environment:
+      - PRIVATE_KEY_PATH=${PRIVATE_KEY_PATH}
+      - PUBLIC_KEY_PATH=${PUBLIC_KEY_PATH}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_USERNAME=${DATABASE_USERNAME}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
@@ -66,6 +71,7 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     volumes:
       - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/keys:/keys:ro
     networks:
       - spice-app-db-network
 
@@ -81,10 +87,13 @@ services:
       - redisservice
     volumes:
       - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/keys:/keys:ro
     depends_on:
       - redisservice
       - mypostgres
     environment:
+      - PRIVATE_KEY_PATH=${PRIVATE_KEY_PATH}
+      - PUBLIC_KEY_PATH=${PUBLIC_KEY_PATH}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_USERNAME=${DATABASE_USERNAME}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
@@ -124,10 +133,13 @@ services:
     restart: always
     volumes:
       - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/keys:/keys:ro
     depends_on:
       - redisservice
       - mypostgres
     environment:
+      - PRIVATE_KEY_PATH=${PRIVATE_KEY_PATH}
+      - PUBLIC_KEY_PATH=${PUBLIC_KEY_PATH}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_USERNAME=${DATABASE_USERNAME}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
@@ -151,11 +163,14 @@ services:
       - redisservice
     volumes:
       - ${PROJECT_PATH}/log:/log
+      - ${PROJECT_PATH}/keys:/keys:ro
       - ${PROJECT_PATH}/Prescription_Signatures:/Prescription_Signatures
     depends_on:
       - redisservice
       - mypostgres
     environment:
+      - PRIVATE_KEY_PATH=${PRIVATE_KEY_PATH}
+      - PUBLIC_KEY_PATH=${PUBLIC_KEY_PATH}
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_USERNAME=${DATABASE_USERNAME}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}

@@ -50,13 +50,13 @@ app:
   mail-password: ${MAIL_PASSWORD}
   mail-send: ${MAIL_SEND}
   file-path: ${FILE_DIR_PATH}
-  public-key: public_key.der
-  private-key: private_key.der
+  public-key: ${PUBLIC_KEY_PATH}
+  private-key: ${PRIVATE_KEY_PATH}
   email-retry-attempts: 3
   sms-retry-attempts: 3
-  twilio-account-sid: ${TWILIO_ACCOUNT_SID:tyretyey436435}
-  twilio-auth-token: ${TWILIO_AUTH_TOKEN:gfhfdhdfg64564}
-  twilio-from-phoneno: ${TWILIO_FROM_PHONENO:+3535354}
+  twilio-account-sid: ${TWILIO_ACCOUNT_SID}
+  twilio-auth-token: ${TWILIO_AUTH_TOKEN}
+  twilio-from-phoneno: ${TWILIO_FROM_PHONENO}
   enable-sms-notification-twilio: ${ENABLE_SMS_NOTIFICATION_TWILIO}
   enable-sms-notification-sns: ${ENABLE_SMS_NOTIFICATION_SNS}
   aws-access-key: ${AWS_ACCESS_KEY}

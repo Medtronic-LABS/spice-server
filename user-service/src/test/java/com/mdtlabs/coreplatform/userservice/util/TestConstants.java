@@ -97,9 +97,7 @@ public class TestConstants {
     
     public static final String POSTAL_CODE = "008978";
     
-    public static final String AUTH_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJTcGljZUFwcGxpY2F0aW9uIiwiZXhwIjoxNjc1"
-            + "NDk0ODcxLCJpYXQiOjE2NzU0MDg0NzEsImp0aSI6IjY0OTAiLCJ1c2VybmFtZSI6ImhlbWFuYXRoMjM5QGdtYWlsLmNvbSJ9.uK"
-            + "jTGyk9d_VzQvIe6FO_1hEQ_M25mrEa6TY8Kp0gRr0";
+    public static final String AUTH_TOKEN = "fake-auth-token";
     
     public static final String APP_VERSION = "11"; 
     

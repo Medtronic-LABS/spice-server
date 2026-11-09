@@ -45,6 +45,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import com.mdtlabs.coreplatform.common.Constants;
 import com.mdtlabs.coreplatform.common.CustomDateSerializer;
 import com.mdtlabs.coreplatform.common.TestConstants;
+import com.mdtlabs.coreplatform.common.TestKeys;
 import com.mdtlabs.coreplatform.common.exception.Validation;
 import com.mdtlabs.coreplatform.common.model.dto.UserDTO;
 import com.mdtlabs.coreplatform.common.model.entity.ApiRolePermission;
@@ -102,7 +103,7 @@ class AuthenticationFilterTest {
     @Test
     void doFilterInternal() throws ServletException, IOException {
         //given
-        ReflectionTestUtils.setField(authenticationFilter, "privateKey", "private_key.der");
+        ReflectionTestUtils.setField(authenticationFilter, "privateKey", TestKeys.PRIVATE_KEY_URI);
         ReflectionTestUtils.setField(authenticationFilter, "privateRsaKey", null);
         MockHttpServletRequest httpServletRequest = new MockHttpServletRequest();
         httpServletRequest.setRequestURI("/user/forgot-user");
@@ -139,7 +140,7 @@ class AuthenticationFilterTest {
     @Test
     void validateAspect() throws ParseException, JsonProcessingException {
         //given
-        ReflectionTestUtils.setField(authenticationFilter, "privateKey", "private_key.der");
+        ReflectionTestUtils.setField(authenticationFilter, "privateKey", TestKeys.PRIVATE_KEY_URI);
         ReflectionTestUtils.setField(authenticationFilter, "privateRsaKey", null);
         String key = Constants.SPICE + Constants.COLON + Constants.LOGIN + Constants.COLON + "superuser@test.com" +
                 Constants.COLON + TestConstants.JWT_TOKEN;
@@ -171,7 +172,7 @@ class AuthenticationFilterTest {
     @Test
     void validateAspectJwtException() {
         //given
-        ReflectionTestUtils.setField(authenticationFilter, "privateKey", "private_key.der");
+        ReflectionTestUtils.setField(authenticationFilter, "privateKey", TestKeys.PRIVATE_KEY_URI);
         ReflectionTestUtils.setField(authenticationFilter, "privateRsaKey", null);
         String key = Constants.SPICE + Constants.COLON + Constants.LOGIN + Constants.COLON + "superuser@test.com" +
                 Constants.COLON + TestConstants.JWT_TOKEN;

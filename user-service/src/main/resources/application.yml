@@ -56,8 +56,8 @@ app:
   email-app-url: ${EMAIL_APP_URL}
   cfr-email-app-url: ${CFR_EMAIL_APP_URL}
   enableFhir: ${ENABLE_FHIR}
-  public-key: public_key.der
-  private-key: private_key.der
+  public-key: ${PUBLIC_KEY_PATH}
+  private-key: ${PRIVATE_KEY_PATH}
   rabbitmq:
     queue:
       name: ${RABBITMQ_QUEUE_NAME}

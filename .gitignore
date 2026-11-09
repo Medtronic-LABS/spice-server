@@ -1,0 +1,14 @@
+# secrets and key material - never commit
+.env
+keys/
+*.der
+*.pem
+*.key
+*.jks
+*.p12
+# editor / build
+*.swp
+*.swo
+target/
+.idea/
+.vscode/

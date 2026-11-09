@@ -36,8 +36,8 @@ eureka:
 
 app:
   swagger-server-url: http://localhost:8089/
-  public-key: public_key.der
-  private-key: private_key.der
+  public-key: ${PUBLIC_KEY_PATH}
+  private-key: ${PRIVATE_KEY_PATH}
   login-time-limit-in-hour: ${LOGIN_TIME_LIMIT_IN_HOUR:1}
   login-count-limit: ${LOGIN_COUNT_LIMIT:5}
 

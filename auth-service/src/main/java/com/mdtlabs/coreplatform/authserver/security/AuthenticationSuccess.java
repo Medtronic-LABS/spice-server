@@ -30,7 +30,7 @@ import org.apache.commons.lang.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -80,7 +80,7 @@ public class AuthenticationSuccess extends SimpleUrlAuthenticationSuccessHandler
     @PostConstruct
     public void init() {
         try {
-            Resource resource = new ClassPathResource(publicKey);
+            Resource resource = new DefaultResourceLoader().getResource(publicKey);
             byte[] data = FileCopyUtils.copyToByteArray(resource.getInputStream());
             X509EncodedKeySpec spec = new X509EncodedKeySpec(data);
             KeyFactory kf = KeyFactory.getInstance(Constants.RSA);

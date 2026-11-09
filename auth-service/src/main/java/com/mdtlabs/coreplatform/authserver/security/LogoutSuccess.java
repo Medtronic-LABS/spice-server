@@ -15,7 +15,7 @@ import com.nimbusds.jwt.EncryptedJWT;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
@@ -130,7 +130,7 @@ public class LogoutSuccess implements LogoutHandler {
      */
     private void tokenDecrypt() {
         try {
-            Resource resource = new ClassPathResource(privateKey);
+            Resource resource = new DefaultResourceLoader().getResource(privateKey);
             byte[] data = FileCopyUtils.copyToByteArray(resource.getInputStream());
             PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(data);
             KeyFactory kf = KeyFactory.getInstance(Constants.RSA);

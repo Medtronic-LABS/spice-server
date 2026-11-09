@@ -1,5 +1,6 @@
 package com.mdtlabs.coreplatform.authserver.security;
 
+import com.mdtlabs.coreplatform.util.TestKeys;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
@@ -66,7 +67,7 @@ class AuthenticationSuccessTest {
     @Test
     void init() {
         //given
-        ReflectionTestUtils.setField(authenticationSuccess, "publicKey", "public_key.der");
+        ReflectionTestUtils.setField(authenticationSuccess, "publicKey", TestKeys.PUBLIC_KEY_URI);
 
         //then
         authenticationSuccess.init();
